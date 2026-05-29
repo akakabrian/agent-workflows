@@ -4,7 +4,11 @@
 
 Open Agent Workflows is a zero-dependency, stdlib-only Python runtime for scripted multi-agent workflows: fan out agent calls, validate structured outputs, resume interrupted runs, and keep a durable local record of what happened.
 
-It is inspired by the Dynamic Workflow pattern released by Anthropic's Claude Code, but we improved it: a script coordinates multiple agent calls, runs independent work in parallel, validates outputs, and synthesizes the result. Open Agent Workflows provides an independent, open-source, agent-agnostic implementation of that pattern.
+It is inspired by the dynamic workflow pattern popularized by Anthropic's Claude: a script coordinates multiple agent calls, runs independent work in parallel, validates outputs, and synthesizes the result.
+
+Open Agent Workflows keeps that ergonomic script style, but makes the runtime local and inspectable: every run is stored in SQLite, every call returns a structured `AgentResult`, mutating calls bypass unsafe prompt-only cache, and worktree isolation fails closed instead of silently falling back to in-place edits.
+
+Open Agent Workflows is not affiliated with Anthropic. Anthropic and Claude are trademarks of Anthropic.
 
 ```python
 from workflows import agent, parallel, phase, log, meta
@@ -72,7 +76,26 @@ It is designed to be:
 - **Dependency-light** — the runtime uses only the Python standard library.
 - **Honest about safety** — scripts are trusted local Python, not sandboxed.
 
-Open Agent Workflows is not affiliated with Anthropic. Anthropic and Claude are trademarks of Anthropic.
+---
+
+## Where this goes further
+
+Open Agent Workflows is not a clone of Claude Dynamic Workflows. It is a small, local runtime for the same workflow pattern, with several deliberate product improvements:
+
+| Area | Claude Dynamic Workflows | Open Agent Workflows |
+|---|---|---|
+| Provider choice | Claude product/runtime | Agent-agnostic adapter layer |
+| Runtime ownership | Product-managed | Local Python runtime |
+| Run history | Product UI / managed runtime | SQLite run/call/event/artifact store |
+| Return values | Final text or validated object | `AgentResult` with status, cache, provider, model, usage, artifacts, and worktree metadata |
+| Cache behavior | Prompt/options memoization | Explicit cache policy with mutating calls bypassing prompt-only cache |
+| Mutation safety | Worktree option, merge handled manually | Fail-closed worktree isolation; provider is not invoked if isolation fails |
+| Offline onboarding | Product-dependent | `--provider fake` works with no model configured |
+| Reports | Product UI | Local Markdown/HTML reports |
+| Dependencies | Product runtime | Python standard library only |
+| Extensibility | Claude environment | Add adapters for other agents, CLIs, APIs, or local models |
+
+The goal is not to outdo Claude as a model product. The goal is to make the dynamic workflow pattern portable, inspectable, and safe enough for local developer use.
 
 ---
 
@@ -161,7 +184,7 @@ Initial providers:
 |---|---|---|---|
 | `fake` | `fixture` | Offline deterministic provider for examples and tests. | None |
 | `claude` | `anthropic`, `claude-cli` | Shells out to Claude CLI print mode. | Uses the CLI's auth. |
-| `codex` | `codex-cli` | Shells out to Codex CLI exec mode. | Uses the CLI's auth. |
+| `codex` | `openai`, `codex-cli` | Shells out to Codex CLI exec mode. | Uses the CLI's auth. |
 
 Open Agent Workflows does not manage or store credentials. Provider CLIs keep their own authentication.
 
@@ -265,6 +288,7 @@ Supported basics include:
 - `properties`
 - `required`
 - `items`
+- `enum`
 
 ---
 
@@ -288,6 +312,8 @@ results = await parallel(
 ```
 
 Use `parallel()` when subtasks are independent and speed matters.
+
+With `fail_fast=True`, cancellation is best-effort: the first failed result or exception stops scheduling new work and cancels still-pending tasks. Calls that already finished are returned with their normal result; cancelled or unscheduled calls are returned as `AgentResult(status="cancelled")`.
 
 ---
 
@@ -333,7 +359,7 @@ child = await workflow("steps/fetch_sources.py", args={"query": "workflow runtim
 return {"child_output": child["output"]}
 ```
 
-Child workflows share the parent's home, budget, and provider defaults.
+Child workflows share the parent's home, budget, and provider defaults. Nesting is limited to one child level for now.
 
 ---
 
@@ -422,6 +448,12 @@ miss -> first live execution
 hit  -> reused prior read-only result
 ```
 
+### `cache_policy="refresh"`
+
+`refresh` skips the cache read, runs the call live, and writes the result back to the same reusable cache key that `auto` / `read_only` use.
+
+Use this when you want to recompute a read-only call without changing the prompt.
+
 ### Mutating calls
 
 Mutating calls bypass prompt-only cache.
@@ -478,10 +510,7 @@ print(result.changed_files)
 
 Nothing is auto-merged. Review and merge manually.
 
-Recommended safety behavior for production use:
-
-- if `isolation="worktree"` cannot create a worktree, the call should fail clearly
-- do not silently fall back to in-place mutation unless the user explicitly opts into best-effort isolation
+Worktree isolation fails closed: if the runtime cannot create a worktree, the provider is not invoked and the call records `AgentResult(ok=False, status="worktree_failed")`.
 
 ---
 
@@ -490,6 +519,8 @@ Recommended safety behavior for production use:
 ```text
 owf init                              Initialize local workflow store
 owf new <path>                        Scaffold a starter workflow script
+owf examples                          List bundled examples
+owf doctor                            Run local environment diagnostics
 owf validate <script>                 Parse and check workflow metadata/main()
 owf dry-run <script> [OPTIONS]        Preview run manifest without execution
 owf run <script> [OPTIONS]            Execute a workflow
@@ -515,6 +546,7 @@ Common run options:
 --arg KEY=VALUE
 --json
 --home PATH
+--debug
 ```
 
 Examples:
@@ -577,22 +609,20 @@ Before executing a mutating or expensive workflow, describe the plan and ask for
 
 ---
 
-## Claude Dynamic Workflows vs Open Agent Workflows
+## Comparison with Claude Dynamic Workflows
 
-| Capability | Anthropic/Claude Dynamic Workflows | Open Agent Workflows |
+| Capability | Claude Dynamic Workflows | Open Agent Workflows |
 |---|---|---|
-| Workflow style | Scripted agent orchestration | Scripted agent orchestration |
-| Core idea | Coordinate multiple agent calls from a workflow script | Coordinate multiple agent calls from a Python workflow script |
-| Provider | Claude product/runtime | Agent-agnostic adapter layer |
-| Runtime visibility | Product-managed | Local files + SQLite |
-| Resume | Product-managed replay/cache | Local SQLite-backed resume/cache |
-| Structured output | Structured agent output | JSON Schema subset validation |
-| Mutating cache safety | Product-managed | Mutating calls bypass prompt-only cache |
-| Offline mode | Product-dependent | Yes, `--provider fake` |
-| Required runtime deps | Product runtime | Python standard library only |
-| License | Proprietary product feature | MIT open source |
+| Core workflow pattern | Script coordinates multiple agent calls | Same pattern, implemented as local Python |
+| Provider | Claude | Agent-agnostic adapter layer |
+| Visibility | Product-managed progress UI | SQLite + local artifacts + Markdown/HTML reports |
+| Return value | Text/object | `AgentResult` with status, cache, usage, artifact, and worktree metadata |
+| Resume/cache | Product-managed memoization | Explicit cache policy and `owf explain-cache` |
+| Mutating calls | Worktree available, merge manual | Mutating calls never use prompt-only cache; worktree isolation fails closed |
+| Offline mode | Product-dependent | Built-in fake provider |
+| Extensibility | Claude environment | Add adapters for CLIs, APIs, or local models |
 
-This project credits the dynamic workflow pattern popularized by Anthropic while providing an independent implementation for developers who want a local, inspectable, agent-agnostic runtime.
+Claude made the pattern visible. Open Agent Workflows makes the pattern portable and inspectable.
 
 ---
 
