@@ -87,6 +87,33 @@ class WorkflowRuntimeTests(unittest.TestCase):
             self.assertEqual(second_status["calls"][0]["cache_status"], "hit")
             self.assertEqual(second_status["calls"][0]["status"], "done")
 
+    def test_resume_records_resumed_from_run_id(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            home = root / ".workflows"
+            script = self._write_script(
+                root,
+                """
+                from workflows import agent
+
+                async def main(args):
+                    result = await agent("resume lineage check", label="resume")
+                    return {"cache_status": result.cache_status, "cache_key": result.cache_key}
+                """,
+            )
+
+            first = run_script(script, home=home, provider="fake", model="fake")
+            second = resume_run(first["run_id"], home=home)
+
+            first_run = run_status(home, first["run_id"])["run"]
+            second_run = run_status(home, second["run_id"])["run"]
+            second_call = run_status(home, second["run_id"])["calls"][0]
+
+            self.assertIsNone(first_run["resumed_from_run_id"])
+            self.assertEqual(second_run["resumed_from_run_id"], first["run_id"])
+            self.assertNotEqual(second["run_id"], first["run_id"])
+            self.assertEqual(second_call["cache_status"], "hit")
+
     def test_call_ids_are_unique_across_runs(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -188,6 +215,45 @@ class WorkflowRuntimeTests(unittest.TestCase):
             self.assertEqual(run({"model": "different-model"}), "miss")
             self.assertEqual(run({"provider": "fixture"}), "miss")
             self.assertEqual(run({"namespace": "v2"}), "miss")
+
+    def test_refresh_updates_normal_cache_key(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            home = root / ".workflows"
+            script = self._write_script(
+                root,
+                """
+                from workflows import agent
+
+                async def main(args):
+                    result = await agent(
+                        "cache refresh prompt",
+                        label="cache-refresh",
+                        cache_policy=args.get("cache_policy", "auto"),
+                        cache_namespace=args.get("namespace"),
+                    )
+                    return {"cache_status": result.cache_status, "cache_key": result.cache_key, "text": result.text}
+                """,
+            )
+
+            first = run_script(script, args={"cache_policy": "auto"}, home=home, provider="fake", model="fake")
+            first_call = run_status(home, first["run_id"])["calls"][0]
+            self.assertEqual(first_call["cache_status"], "miss")
+
+            second = run_script(script, args={"cache_policy": "auto"}, home=home, provider="fake", model="fake")
+            second_call = run_status(home, second["run_id"])["calls"][0]
+            self.assertEqual(second_call["cache_status"], "hit")
+            self.assertEqual(second_call["call_key"], first_call["call_key"])
+
+            refresh = run_script(script, args={"cache_policy": "refresh"}, home=home, provider="fake", model="fake")
+            refresh_call = run_status(home, refresh["run_id"])["calls"][0]
+            self.assertEqual(refresh_call["cache_status"], "miss")
+            self.assertEqual(refresh_call["call_key"], first_call["call_key"])
+
+            after = run_script(script, args={"cache_policy": "auto"}, home=home, provider="fake", model="fake")
+            after_call = run_status(home, after["run_id"])["calls"][0]
+            self.assertEqual(after_call["cache_status"], "hit")
+            self.assertEqual(after_call["call_key"], first_call["call_key"])
 
     def test_worktree_failure_is_recorded_without_provider_invocation(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

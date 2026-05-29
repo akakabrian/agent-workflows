@@ -155,7 +155,6 @@ class WorkflowCallRequest:
             "model": self.model,
             "agent_type": self.agent_type,
             "isolation": self.isolation,
-            "cache_policy": self.cache_policy,
             "read_scope": self.read_scope,
             "write_scope": self.write_scope,
             "permissions": self.permissions,
@@ -163,4 +162,3 @@ class WorkflowCallRequest:
             "cache_namespace": self.cache_namespace,
         }
         return hash_json(payload)
-

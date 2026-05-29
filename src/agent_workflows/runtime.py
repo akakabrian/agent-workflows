@@ -1042,6 +1042,7 @@ def run_script(
     budget_tokens: int | None = None,
     budget_cost_usd: float | None = None,
     cache_policy: str = "auto",
+    resumed_from_run_id: str | None = None,
 ) -> dict[str, Any]:
     return asyncio.run(
         _arun_script(
@@ -1053,6 +1054,7 @@ def run_script(
             budget_tokens=budget_tokens,
             budget_cost_usd=budget_cost_usd,
             cache_policy=cache_policy,
+            resumed_from_run_id=resumed_from_run_id,
         )
     )
 
@@ -1077,6 +1079,7 @@ def resume_run(
         budget_tokens=previous.get("budget_total_tokens"),
         budget_cost_usd=previous.get("budget_total_cost_usd"),
         cache_policy=previous.get("cache_policy") or "auto",
+        resumed_from_run_id=run_id,
     )
 
 
