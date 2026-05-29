@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "open-agent-workflows"
+version = "0.1.0"
+description = "Provider-agnostic dynamic workflow runtime for agent scripts"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+authors = [{name = "Brian"}]
+keywords = ["agents", "workflows", "ai", "cli", "sqlite"]
+dependencies = []
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Environment :: Console",
+    "Topic :: Software Development :: Libraries",
+]
+
+[project.urls]
+Homepage = "https://github.com/akakabrian/agent-workflows"
+Repository = "https://github.com/akakabrian/agent-workflows"
+Issues = "https://github.com/akakabrian/agent-workflows/issues"
+
+[project.scripts]
+owf = "agent_workflows.cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]

@@ -1,0 +1,7 @@
+__pycache__/
+*.py[cod]
+.workflows/
+.venv/
+*.egg-info/
+build/
+dist/
