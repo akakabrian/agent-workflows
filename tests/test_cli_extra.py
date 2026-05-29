@@ -20,11 +20,12 @@ from agent_workflows.runtime import run_status
 # ---------------------------------------------------------------------------
 
 def _run_cli(argv: list[str]) -> tuple[int, str]:
-    """Run cli_main, capture stdout, return (exit_code, captured_text)."""
+    """Run cli_main, capture stdout/stderr, return (exit_code, captured_text)."""
     buf = io.StringIO()
-    with contextlib.redirect_stdout(buf):
+    err = io.StringIO()
+    with contextlib.redirect_stdout(buf), contextlib.redirect_stderr(err):
         code = cli_main(argv)
-    return code, buf.getvalue()
+    return code, buf.getvalue() + err.getvalue()
 
 
 def _write_script(root: Path, body: str) -> Path:
@@ -272,6 +273,67 @@ class FullFlowTest(unittest.TestCase):
             code, cat_out = _run_cli(["cat", call_id, "--home", str(home), "--prompt"])
             self.assertEqual(code, 0)
             self.assertIn("2+2", cat_out)
+
+
+class AdvertisedCommandSmokeTests(unittest.TestCase):
+
+    def test_new_dry_run_latest_json_commands(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            home = root / ".workflows"
+            script = root / "examples" / "first.py"
+
+            code, out = _run_cli(["new", str(script)])
+            self.assertEqual(code, 0, out)
+            self.assertTrue(script.exists())
+
+            code, out = _run_cli(["dry-run", str(script), "--json"])
+            self.assertEqual(code, 0, out)
+            self.assertEqual(json.loads(out)["provider"], "fake")
+
+            code, out = _run_cli(["run", str(script), "--home", str(home), "--json"])
+            self.assertEqual(code, 0, out)
+            run_id = json.loads(out)["run_id"]
+
+            for command in ("status", "calls"):
+                code, out = _run_cli([command, "latest", "--home", str(home), "--json"])
+                self.assertEqual(code, 0, out)
+                self.assertTrue(json.loads(out))
+
+            code, out = _run_cli(["output", "latest", "--home", str(home)])
+            self.assertEqual(code, 0, out)
+            self.assertIn("greeting", out)
+
+            code, out = _run_cli(["report", "latest", "--home", str(home), "--stdout"])
+            self.assertEqual(code, 0, out)
+            self.assertIn(run_id, out)
+
+            code, out = _run_cli(["artifacts", "latest", "--home", str(home)])
+            self.assertEqual(code, 0, out)
+            self.assertIn("prompt", out)
+
+            call_id = run_status(home, run_id)["calls"][0]["id"]
+            code, out = _run_cli(["cat", call_id, "--home", str(home)])
+            self.assertEqual(code, 0, out)
+
+    def test_doctor_and_examples_commands(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            code, out = _run_cli(["doctor", "--home", str(Path(tmp) / ".workflows")])
+            self.assertIn(code, (0, 1))
+            self.assertIn("Python 3.11+", out)
+
+            code, out = _run_cli(["examples", "--json"])
+            self.assertEqual(code, 0, out)
+            self.assertIn("hello_workflow.py", out)
+
+    def test_debug_flag_controls_tracebacks(self):
+        code, out = _run_cli(["cat", "missing_call", "--home", str(Path(tempfile.gettempdir()) / "owf-no-runs")])
+        self.assertNotEqual(code, 0)
+        self.assertNotIn("Traceback", out)
+
+        code, out = _run_cli(["cat", "missing_call", "--home", str(Path(tempfile.gettempdir()) / "owf-no-runs"), "--debug"])
+        self.assertNotEqual(code, 0)
+        self.assertIn("Traceback", out)
 
 
 if __name__ == "__main__":

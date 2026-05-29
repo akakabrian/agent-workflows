@@ -26,6 +26,11 @@ The `read_scope` / `write_scope` / `permissions` fields on a call are
 declarative metadata for adapters and for human review. The core runtime does
 **not** enforce them as an OS-level sandbox.
 
+`isolation="worktree"` is fail-closed. If the runtime cannot create the git
+worktree requested by a call, the provider is not invoked and the call is
+recorded with `status="worktree_failed"`. The runtime does not silently run a
+worktree-isolated call in the user's current working tree.
+
 ## Cache safety: mutating calls bypass the prompt-only cache
 
 The run cache is keyed on the prompt and call parameters, not on filesystem
@@ -65,8 +70,8 @@ Please report security issues privately rather than opening a public issue.
 - **Preferred:** open a private security advisory via GitHub
   ("Security" tab → "Report a vulnerability") so the report stays confidential
   until a fix is available.
-- **Security contact:** TBD (a dedicated security contact address will be
-  published here before the first stable release).
+- **Security contact:** use GitHub private vulnerability reporting for this
+  repository.
 
 Please include a description of the issue, affected versions, and a minimal
 reproduction if you can. We will acknowledge the report, investigate, and

@@ -32,6 +32,7 @@ from .storage import (
     get_run,
     initialize,
     latest_run_id,
+    make_call_id,
     record_artifact,
     record_call,
     record_event,
@@ -64,6 +65,7 @@ class WorkflowRuntime:
         adapter: Any | None = None,
         provider: str = "fake",
         model: str = "fake",
+        workflow_depth: int = 0,
     ) -> None:
         self.home = home
         # An explicit adapter overrides provider routing (used by tests/embedders).
@@ -72,6 +74,7 @@ class WorkflowRuntime:
         self._adapter_cache: dict[str, Any] = {}
         self.provider = provider
         self.model = model
+        self.workflow_depth = workflow_depth
         self.meta = WorkflowMeta(name="workflow")
         self.args: dict[str, Any] = {}
         self.script_path: Path | None = None
@@ -318,26 +321,70 @@ def _git(args: list[str], *, cwd: str | None = None) -> tuple[int, str, str]:
     return proc.returncode, proc.stdout, proc.stderr
 
 
-def _create_worktree(runtime: WorkflowRuntime, call_id: str) -> _Worktree | None:
+def _create_worktree(runtime: WorkflowRuntime, call_id: str) -> _Worktree:
     """Create a fresh git worktree for a mutating call.
 
-    Returns None (and the call runs in place) if the base directory is not a git
-    repository, so worktree isolation degrades gracefully rather than failing.
+    Worktree isolation is fail-closed: if setup cannot complete, the provider
+    call must not run in the user's current working tree.
     """
     base = str(runtime.script_path.parent) if runtime.script_path else str(Path.cwd())
-    code, out, _ = _git(["rev-parse", "--show-toplevel"], cwd=base)
+    code, out, err = _git(["rev-parse", "--show-toplevel"], cwd=base)
     if code != 0:
-        return None
+        detail = (err or out or "not inside a git repository").strip()
+        raise WorkflowError(f"worktree isolation failed: {detail}")
     root = out.strip()
     if runtime.current_output_dir is None:
-        return None
+        raise WorkflowError("worktree isolation failed: run output directory not initialized")
     wt_path = runtime.current_output_dir / "worktrees" / call_id
     wt_path.parent.mkdir(parents=True, exist_ok=True)
     branch = f"owf/{runtime.run_id or 'run'}/{call_id}"
     code, _, err = _git(["worktree", "add", "-b", branch, str(wt_path), "HEAD"], cwd=root)
     if code != 0:
-        return None
+        detail = (err or "git worktree add failed").strip()
+        raise WorkflowError(f"worktree isolation failed: {detail}")
     return _Worktree(root=root, path=str(wt_path), branch=branch)
+
+
+def _record_worktree_failure(
+    runtime: WorkflowRuntime,
+    *,
+    call_id: str,
+    request: WorkflowCallRequest,
+    request_record: dict[str, Any],
+    error: str,
+    started: float,
+) -> AgentResult:
+    result = AgentResult(
+        ok=False,
+        status="worktree_failed",
+        error=error,
+        call_id=call_id,
+        label=request.label,
+        phase=request.phase,
+        provider=request.provider,
+        model=request.model,
+        agent_type=request.agent_type,
+        cache_key=request_record["call_key"],
+        cache_status="bypassed",
+        duration_ms=int((time.perf_counter() - started) * 1000),
+        input_tokens=0,
+        output_tokens=0,
+        cache_read_tokens=0,
+        cache_write_tokens=0,
+        isolation=request.isolation,
+    )
+    artifacts: list[WorkflowArtifact] = []
+    if runtime.run_id:
+        artifacts.append(
+            _write_artifact(runtime, runtime.run_id, call_id, kind="prompt", filename="prompt.txt", content=request.prompt)
+        )
+        result.prompt_path = artifacts[-1].path
+        artifacts.append(
+            _write_artifact(runtime, runtime.run_id, call_id, kind="error", filename="error.txt", content=error)
+        )
+        result.artifacts = artifacts
+        record_call(runtime.home, runtime.run_id, runtime.call_index, result, request_record)
+    return result
 
 
 def _finalize_worktree(worktree: _Worktree, result: AgentResult) -> None:
@@ -379,7 +426,7 @@ async def agent(
         raise WorkflowError("budget exhausted")
 
     runtime.call_index += 1
-    call_id = f"call_{runtime.call_index:04d}"
+    call_id = make_call_id(runtime.run_id or "pending_run", runtime.call_index)
     request = WorkflowCallRequest(
         prompt=prompt,
         label=label,
@@ -484,7 +531,6 @@ async def agent(
             )
         return result
 
-    adapter = runtime.resolve_adapter(request.provider)
     request_record = {
         "prompt": prompt,
         "prompt_hash": hash_text(prompt),
@@ -497,9 +543,20 @@ async def agent(
     # edits never touch the user's working tree and can be inspected afterward.
     worktree: _Worktree | None = None
     if request.isolation == "worktree":
-        worktree = _create_worktree(runtime, call_id)
-        if worktree is not None:
-            request.cwd = worktree.path
+        try:
+            worktree = _create_worktree(runtime, call_id)
+        except WorkflowError as exc:
+            return _record_worktree_failure(
+                runtime,
+                call_id=call_id,
+                request=request,
+                request_record=request_record,
+                error=str(exc),
+                started=now,
+            )
+        request.cwd = worktree.path
+
+    adapter = runtime.resolve_adapter(request.provider)
 
     started = time.perf_counter()
     result = await adapter.run(request)
@@ -641,20 +698,63 @@ async def parallel(
     fail_fast: bool = False,
 ) -> list[AgentResult]:
     cap = concurrency or len(thunks) or 1
-    semaphore = asyncio.Semaphore(cap)
+    if not fail_fast:
+        semaphore = asyncio.Semaphore(cap)
 
-    async def run_one(index: int, thunk: Callable[[], Awaitable[AgentResult]]):
-        async with semaphore:
+        async def run_one(index: int, thunk: Callable[[], Awaitable[AgentResult]]):
+            async with semaphore:
+                try:
+                    return index, await thunk()
+                except Exception as exc:
+                    return index, AgentResult(ok=False, status="failed", error=str(exc))
+
+        results = await asyncio.gather(*[run_one(i, thunk) for i, thunk in enumerate(thunks)])
+        return [result for _, result in sorted(results, key=lambda item: item[0])]
+
+    results: list[AgentResult | None] = [None] * len(thunks)
+    next_index = 0
+    pending: dict[asyncio.Task[tuple[int, AgentResult]], int] = {}
+
+    async def run_one(index: int, thunk: Callable[[], Awaitable[AgentResult]]) -> tuple[int, AgentResult]:
+        try:
+            return index, await thunk()
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            return index, AgentResult(ok=False, status="failed", error=str(exc))
+
+    def schedule() -> None:
+        nonlocal next_index
+        while next_index < len(thunks) and len(pending) < cap:
+            task = asyncio.create_task(run_one(next_index, thunks[next_index]))
+            pending[task] = next_index
+            next_index += 1
+
+    schedule()
+    while pending:
+        done, _ = await asyncio.wait(pending.keys(), return_when=asyncio.FIRST_COMPLETED)
+        failed = False
+        for task in done:
+            index = pending.pop(task)
             try:
-                return index, await thunk()
-            except Exception as exc:
-                return index, AgentResult(ok=False, status="failed", error=str(exc))
-
-    results = await asyncio.gather(*[run_one(i, thunk) for i, thunk in enumerate(thunks)])
-    ordered = [result for _, result in sorted(results, key=lambda item: item[0])]
-    if fail_fast and any(not result.ok for result in ordered):
-        return ordered
-    return ordered
+                _, result = task.result()
+            except asyncio.CancelledError:
+                result = AgentResult(ok=False, status="cancelled", error="cancelled after parallel failure")
+            results[index] = result
+            if not result.ok:
+                failed = True
+        if failed:
+            for task, index in list(pending.items()):
+                task.cancel()
+                results[index] = AgentResult(ok=False, status="cancelled", error="cancelled after parallel failure")
+            if pending:
+                await asyncio.gather(*pending.keys(), return_exceptions=True)
+                pending.clear()
+            for index in range(next_index, len(thunks)):
+                results[index] = AgentResult(ok=False, status="cancelled", error="not scheduled after parallel failure")
+            break
+        schedule()
+    return [result or AgentResult(ok=False, status="cancelled", error="not scheduled") for result in results]
 
 
 async def pipeline(
@@ -674,6 +774,8 @@ async def pipeline(
 
 async def workflow(name_or_ref: str, args: dict[str, Any] | None = None) -> dict[str, Any]:
     parent = _runtime()
+    if parent.workflow_depth >= 1:
+        raise WorkflowError("workflow() nesting is limited to one child level")
     path = Path(name_or_ref)
     if not path.is_absolute() and not path.exists() and parent.script_path is not None:
         # Resolve child references relative to the parent script first, so a
@@ -694,6 +796,7 @@ async def workflow(name_or_ref: str, args: dict[str, Any] | None = None) -> dict
         cache_policy="auto",
         budget=parent.budget,
         parent_run_id=parent.run_id,
+        workflow_depth=parent.workflow_depth + 1,
     )
 
 
@@ -813,6 +916,7 @@ def _prepare_run(
     budget: WorkflowBudget | None = None,
     parent_run_id: str | None = None,
     resumed_from_run_id: str | None = None,
+    workflow_depth: int = 0,
 ) -> tuple[WorkflowRuntime, Callable[..., Any], Path, Any, Path]:
     path = Path(script_path).expanduser().resolve()
     home_path = initialize(Path(home) if home else path.parent / ".workflows")
@@ -821,7 +925,7 @@ def _prepare_run(
     if main is None or not callable(main):
         raise WorkflowError("workflow scripts must define async main(args)")
 
-    runtime = WorkflowRuntime(home=home_path, provider=provider, model=model)
+    runtime = WorkflowRuntime(home=home_path, provider=provider, model=model, workflow_depth=workflow_depth)
     runtime.meta = meta_value
     runtime.args = dict(args or {})
     runtime.script_path = path
@@ -879,6 +983,7 @@ async def _arun_script(
     budget: WorkflowBudget | None = None,
     parent_run_id: str | None = None,
     resumed_from_run_id: str | None = None,
+    workflow_depth: int = 0,
 ) -> dict[str, Any]:
     runtime, main, summary_path, token, path = _prepare_run(
         script_path,
@@ -892,6 +997,7 @@ async def _arun_script(
         budget=budget,
         parent_run_id=parent_run_id,
         resumed_from_run_id=resumed_from_run_id,
+        workflow_depth=workflow_depth,
     )
     try:
         result = main(runtime.args)

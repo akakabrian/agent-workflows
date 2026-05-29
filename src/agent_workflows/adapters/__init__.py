@@ -14,6 +14,7 @@ _REGISTRY: dict[str, type] = {
     "anthropic": ClaudeCLIAdapter,
     "codex": CodexCLIAdapter,
     "codex-cli": CodexCLIAdapter,
+    "openai": CodexCLIAdapter,
 }
 
 

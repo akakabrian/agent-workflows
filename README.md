@@ -45,10 +45,10 @@ async def main(args):
 Run it offline (no model required):
 
 ```bash
-owf run examples/hello_workflow.py --provider fake
+owf run examples/hello_workflow.py --provider fake --home .workflows
 # run_id: 20260528-143201-a3f1
 # status: done
-# run_dir: examples/.workflows/runs/20260528-143201-a3f1
+# run_dir: .workflows/runs/20260528-143201-a3f1
 ```
 
 Inspect the result:
@@ -66,6 +66,24 @@ Resume after an interruption:
 ```bash
 owf resume 20260528-143201-a3f1
 ```
+
+---
+
+## Quickstart in 60 seconds
+
+```bash
+git clone https://github.com/akakabrian/agent-workflows.git
+cd agent-workflows
+pip install -e .
+
+owf new examples/my_first_workflow.py
+owf run examples/my_first_workflow.py --provider fake --home .workflows
+owf status latest
+owf output latest
+owf report latest --stdout
+```
+
+You just ran a durable, resumable agent workflow without configuring a model provider.
 
 ---
 
@@ -123,6 +141,11 @@ Key `AgentResult` fields:
 
 Helpers: `.require_ok()`, `.value_or_raise()`, `.text_or_raise()`.
 
+Schema validation intentionally supports a small JSON Schema subset rather than
+full draft compliance: `type` checks for object, array, string, number,
+integer, boolean, and null; object `properties` and `required`; array `items`;
+and `enum`.
+
 ### `await parallel(thunks, concurrency=None, fail_fast=False)`
 
 Fan out a list of zero-argument async callables and collect results in order:
@@ -134,6 +157,11 @@ results = await parallel(
     concurrency=3,
 )
 ```
+
+With `fail_fast=True`, cancellation is best-effort: the first failed result or
+exception stops scheduling new work and cancels still-pending tasks. Calls that
+already finished are returned with their normal result; cancelled or unscheduled
+calls are returned as `AgentResult(status="cancelled")`.
 
 ### `await pipeline(items, fn, stop_on_error=False)`
 
@@ -179,6 +207,8 @@ print(budget.spent_tokens, budget.remaining_tokens)
 ```
 owf init                              # initialise the local run store
 owf new <path>                        # scaffold a starter script
+owf examples                          # list bundled examples
+owf doctor                            # local environment diagnostics
 owf validate <script>                 # parse + check meta/main
 owf dry-run  <script> [OPTIONS]       # preview manifest, no execution
 owf run      <script> [OPTIONS]       # execute a workflow
@@ -204,6 +234,7 @@ owf cat      <call_id>  [--prompt]    # print a call's output or prompt
 --arg KEY=VALUE            (repeatable)
 --json                     (machine-readable output)
 --home PATH                (override the .workflows home directory)
+--debug                    (print Python tracebacks for errors)
 ```
 
 `resume` additionally accepts `--provider` and `--model` to override the
@@ -216,8 +247,8 @@ original run's provider.
 From source (editable install, recommended for development):
 
 ```bash
-git clone https://github.com/<org>/open-agent-workflows
-cd open-agent-workflows
+git clone https://github.com/akakabrian/agent-workflows.git
+cd agent-workflows
 pip install -e .
 owf --help
 ```
@@ -272,8 +303,10 @@ touch your working tree. After the call, `result.worktree_path`,
 `result.worktree_branch`, and `result.changed_files` tell you what changed.
 Nothing is auto-merged — you review and merge manually.
 
-Worktree isolation degrades gracefully: if the script directory is not inside
-a git repository, the call runs in-place without error.
+Worktree isolation fails closed: if the script directory is not inside a git
+repository, or if `git worktree add` fails, the provider is not invoked and
+the call records `AgentResult(ok=False, status="worktree_failed")`. The runtime
+will not silently run a worktree-isolated call in your current working tree.
 
 ---
 

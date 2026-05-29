@@ -2,7 +2,10 @@ from __future__ import annotations
 
 import argparse
 import json
+import shutil
+import sqlite3
 import sys
+import traceback
 from dataclasses import asdict, is_dataclass
 from pathlib import Path
 from typing import Any
@@ -285,10 +288,64 @@ def cmd_new(ns: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_doctor(ns: argparse.Namespace) -> int:
+    home = _resolve_home(ns)
+    checks = []
+
+    py_ok = sys.version_info >= (3, 11)
+    checks.append(("Python 3.11+", "ready" if py_ok else "attention", sys.version.split()[0]))
+
+    try:
+        initialize(home)
+        probe = home / ".doctor-write-test"
+        probe.write_text("ok", encoding="utf-8")
+        probe.unlink()
+        checks.append(("write access", "ready", str(home)))
+    except OSError as exc:
+        checks.append(("write access", "attention", str(exc)))
+
+    checks.append(("SQLite", "ready" if sqlite3.sqlite_version else "missing", sqlite3.sqlite_version))
+
+    for binary in ("git", "claude", "codex"):
+        path = shutil.which(binary)
+        status = "ready" if path else "missing"
+        checks.append((f"{binary} CLI", status, path or "not found on PATH"))
+
+    if ns.json:
+        print(_dump([{"check": name, "status": status, "detail": detail} for name, status, detail in checks]))
+    else:
+        for name, status, detail in checks:
+            print(f"{status:9} {name}: {detail}")
+    return 0 if all(status != "attention" for _, status, _ in checks) else 1
+
+
+def cmd_examples(ns: argparse.Namespace) -> int:
+    root = Path(__file__).resolve().parents[2]
+    examples_dir = root / "examples"
+    rows = []
+    if examples_dir.exists():
+        for path in sorted(examples_dir.glob("*.py")):
+            rows.append(
+                {
+                    "name": path.name,
+                    "path": str(path.relative_to(root)),
+                    "run": f"owf run {path.relative_to(root)} --provider fake",
+                }
+            )
+    if ns.json:
+        print(_dump(rows))
+    else:
+        for row in rows:
+            print(f"{row['path']}: {row['run']}")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="owf", description="Open Agent Workflows")
+    parser.add_argument("--debug", action="store_true", help="Print Python tracebacks for errors")
     common = argparse.ArgumentParser(add_help=False)
     common.add_argument("--home", help="Workflow home directory")
+    common.add_argument("--debug", action="store_true", help=argparse.SUPPRESS)
     sub = parser.add_subparsers(dest="command", required=True)
 
     init = sub.add_parser("init", help="Initialize the local workflow store", parents=[common])
@@ -349,6 +406,14 @@ def build_parser() -> argparse.ArgumentParser:
     new.add_argument("--force", action="store_true")
     new.set_defaults(func=cmd_new)
 
+    doctor = sub.add_parser("doctor", help="Run local environment diagnostics", parents=[common])
+    doctor.add_argument("--json", action="store_true")
+    doctor.set_defaults(func=cmd_doctor)
+
+    examples = sub.add_parser("examples", help="List bundled examples", parents=[common])
+    examples.add_argument("--json", action="store_true")
+    examples.set_defaults(func=cmd_examples)
+
     explain = sub.add_parser("explain-cache", help="Explain each call's cache decision", parents=[common])
     explain.add_argument("run_id")
     explain.add_argument("--json", action="store_true")
@@ -380,8 +445,14 @@ def main(argv: list[str] | None = None) -> int:
     try:
         return ns.func(ns)
     except WorkflowError as exc:
+        if getattr(ns, "debug", False):
+            traceback.print_exc()
+            return 2
         print(str(exc), file=sys.stderr)
         return 2
     except Exception as exc:  # noqa: BLE001 - surface a clean message; details persist in the run artifacts
+        if getattr(ns, "debug", False):
+            traceback.print_exc()
+            return 1
         print(f"{exc.__class__.__name__}: {exc}", file=sys.stderr)
         return 1

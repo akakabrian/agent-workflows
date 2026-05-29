@@ -20,7 +20,7 @@ from agent_workflows.adapters import (
 )
 from agent_workflows.adapters import cli as cli_adapter
 from agent_workflows.models import AgentResult
-from agent_workflows.runtime import WorkflowRuntime, _Worktree, _create_worktree, _finalize_worktree
+from agent_workflows.runtime import WorkflowError, WorkflowRuntime, _Worktree, _create_worktree, _finalize_worktree
 
 
 # ---------------------------------------------------------------------------
@@ -61,10 +61,9 @@ class BuildAdapterTests(unittest.TestCase):
         adapter = build_adapter("codex-cli")
         self.assertIsInstance(adapter, CodexCLIAdapter)
 
-    def test_openai_provider_raises(self):
-        # "openai" is NOT in the registry (CodexCLIAdapter uses "codex"/"codex-cli")
-        with self.assertRaises(AdapterError):
-            build_adapter("openai")
+    def test_openai_provider_aliases_codex(self):
+        adapter = build_adapter("openai")
+        self.assertIsInstance(adapter, CodexCLIAdapter)
 
     def test_unknown_provider_raises(self):
         with self.assertRaises(AdapterError):
@@ -325,7 +324,7 @@ class WorktreeTests(unittest.TestCase):
             self.assertEqual(result.changed_files, [])
             self.assertIsNone(result.worktree_path)
 
-    def test_no_git_repo_returns_none(self):
+    def test_no_git_repo_raises(self):
         with tempfile.TemporaryDirectory() as tmp:
             non_git = Path(tmp) / "not_a_repo"
             non_git.mkdir()
@@ -338,8 +337,8 @@ class WorktreeTests(unittest.TestCase):
             rt.run_id = "run_nongit"
             rt.script_path = script
             rt.current_output_dir = output_dir
-            result = _create_worktree(rt, "call_0001")
-            self.assertIsNone(result)
+            with self.assertRaises(WorkflowError):
+                _create_worktree(rt, "call_0001")
 
 
 if __name__ == "__main__":

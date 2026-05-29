@@ -90,7 +90,7 @@ class ClaudeCLIAdapter:
                 argv, stdin_text=prompt, cwd=request.cwd, timeout_seconds=timeout
             )
         except FileNotFoundError as exc:
-            return _provider_failed(request, f"`{self.binary}` not found on PATH ({exc})")
+            return _missing_cli(request, provider="claude", binary=self.binary, exc=exc)
         except asyncio.TimeoutError:
             return _timed_out(request, timeout)
 
@@ -156,7 +156,7 @@ class CodexCLIAdapter:
                     argv, stdin_text=prompt, cwd=request.cwd, timeout_seconds=timeout
                 )
             except FileNotFoundError as exc:
-                return _provider_failed(request, f"`{self.binary}` not found on PATH ({exc})")
+                return _missing_cli(request, provider="codex", binary=self.binary, exc=exc)
             except asyncio.TimeoutError:
                 return _timed_out(request, timeout)
 
@@ -257,6 +257,18 @@ def _provider_failed(request, message: str) -> AgentResult:
         provider=request.provider,
         model=request.model,
         agent_type=request.agent_type,
+    )
+
+
+def _missing_cli(request, *, provider: str, binary: str, exc: FileNotFoundError) -> AgentResult:
+    return _provider_failed(
+        request,
+        (
+            f"Provider `{provider}` requires the `{binary}` CLI on PATH.\n\n"
+            f"Try:\n  {binary} --help\n\n"
+            "Or run offline first:\n  owf run examples/hello_workflow.py --provider fake"
+            f"\n\nDetails: {exc}"
+        ),
     )
 
 

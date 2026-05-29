@@ -156,8 +156,8 @@ def make_run_id() -> str:
     return "run_" + datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S") + "_" + secrets.token_hex(2)
 
 
-def make_call_id(index: int) -> str:
-    return f"call_{index:04d}"
+def make_call_id(run_id: str, index: int) -> str:
+    return f"{run_id}_call_{index:04d}"
 
 
 def create_run(
@@ -304,7 +304,7 @@ def record_call(home: Path, run_id: str, call_index: int, result: AgentResult, r
     with connect(home) as connection:
         connection.execute(
             """
-            INSERT OR REPLACE INTO workflow_calls (
+            INSERT INTO workflow_calls (
               id, run_id, call_index, phase, label, prompt, prompt_hash, opts_json,
               call_key, status, cache_status, provider, model, agent_type, schema_json,
               schema_hash, validation_status, validation_errors_json, output_text,
