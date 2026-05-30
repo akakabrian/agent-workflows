@@ -1,105 +1,75 @@
 # Open Agent Workflows
 
-**Agent-agnostic dynamic workflows for Python.**
-
-Open Agent Workflows is a zero-dependency, stdlib-only Python runtime for scripted multi-agent workflows: fan out agent calls, validate structured outputs, resume interrupted runs, and keep a durable local record of what happened.
-
-It is inspired by the dynamic workflow pattern popularized by Anthropic's Claude: a script coordinates multiple agent calls, runs independent work in parallel, validates outputs, and synthesizes the result.
-
-Open Agent Workflows keeps that ergonomic script style, but makes the runtime local and inspectable: every run is stored in SQLite, every call returns a structured `AgentResult`, mutating calls bypass unsafe prompt-only cache, and worktree isolation fails closed instead of silently falling back to in-place edits.
-
-Open Agent Workflows is not affiliated with Anthropic. Anthropic and Claude are trademarks of Anthropic.
-
-```python
-from workflows import agent, parallel, phase, log, meta
-
-meta(name="repo-health-check", description="Check repositories for missing project docs")
-
-REPOS = ["hive", "books", "clarion"]
-
-async def main(args):
-    phase("Scan")
-
-    results = await parallel([
-        lambda repo=repo: agent(
-            f"Check {repo} for README.md, AGENTS.md, and STATE.md. Report gaps.",
-            label=f"scan:{repo}",
-            schema={
-                "type": "object",
-                "properties": {
-                    "repo": {"type": "string"},
-                    "missing": {"type": "array", "items": {"type": "string"}},
-                },
-                "required": ["repo", "missing"],
-            },
-        )
-        for repo in REPOS
-    ])
-
-    phase("Report")
-    gaps = [r.value for r in results if r.ok and r.value["missing"]]
-    log("completed", repos=len(REPOS), gaps=len(gaps))
-
-    return {"gaps": gaps}
-```
-
-Run it offline with the fake provider:
-
-```bash
-owf run examples/repo_health_check.py --provider fake
-owf status latest
-owf output latest
-owf report latest --stdout
-```
-
----
+A zero-dependency, stdlib-only Python runtime for **provider-agnostic dynamic
+agent workflows** — durable, resumable, and composable from a single script
+file.
 
 ## Why it exists
 
-Anthropic's Dynamic Workflows made a useful pattern visible: agents can do more when a script coordinates them.
+Most workflow orchestrators either lock you into a specific model vendor, pull
+in heavy SDKs, or mix orchestration logic with HTTP clients.  Open Agent
+Workflows does none of that:
 
-But the pattern should not require one product, one model, or one hidden runtime.
+- **Provider-agnostic.** The same script runs against the `fake` adapter
+  offline, against `claude` (Claude CLI), or against `codex` (Codex CLI)
+  with a single `--provider` flag.
+- **Zero runtime dependencies.** The core uses only the Python standard
+  library — `asyncio`, `sqlite3`, `importlib`, `hashlib`, `json`. No pip
+  extras are required to run or develop against it.
+- **Durable and resumable.** Every run is recorded in SQLite. On interrupt or
+  failure you can `owf resume <run_id>` — read-only calls replay instantly
+  from cache; mutating calls re-execute safely.
+- **Script-first.** A workflow is a plain `.py` file with an `async def main(args)`.
+  No YAML, no DAG builder, no class hierarchy.
 
-Open Agent Workflows gives you a small local runtime for the core idea:
+---
 
-```text
-script -> agent calls -> structured outputs -> cache/resume -> report
+## A first workflow
+
+```python
+# examples/hello_workflow.py
+from workflows import agent, log, meta, phase
+
+meta(name="hello", description="A simple greeting workflow")
+
+async def main(args):
+    phase("greet")
+    result = await agent(
+        "Write a one-sentence welcome message for an AI workflow tool.",
+        label="greeting",
+    )
+    log("done", greeting=result.text)
+    return {"greeting": result.text}
 ```
 
-It is designed to be:
+Run it offline (no model required):
 
-- **Agent-agnostic** — use the fake provider, Claude CLI, Codex CLI, or future adapters.
-- **Script-first** — workflows are plain Python files with `async def main(args)`.
-- **Durable** — runs, calls, events, artifacts, and cache records are stored in SQLite.
-- **Resumable** — read-only calls can replay from cache after interruption.
-- **Inspectable** — prompts, outputs, reports, and artifacts are saved locally.
-- **Dependency-light** — the runtime uses only the Python standard library.
-- **Honest about safety** — scripts are trusted local Python, not sandboxed.
+```bash
+owf run examples/hello_workflow.py --provider fake --home .workflows
+# run_id: 20260528-143201-a3f1
+# status: done
+# run_dir: .workflows/runs/20260528-143201-a3f1
+```
 
----
+Inspect the result:
 
-## Where this goes further
+```bash
+owf status latest
+owf output latest
+owf calls  latest
+owf explain-cache latest
+owf report latest --stdout
+```
 
-Open Agent Workflows is not a clone of Claude Dynamic Workflows. It is a small, local runtime for the same workflow pattern, with several deliberate product improvements:
+Resume after an interruption:
 
-| Area | Claude Dynamic Workflows | Open Agent Workflows |
-|---|---|---|
-| Provider choice | Claude product/runtime | Agent-agnostic adapter layer |
-| Runtime ownership | Product-managed | Local Python runtime |
-| Run history | Product UI / managed runtime | SQLite run/call/event/artifact store |
-| Return values | Final text or validated object | `AgentResult` with status, cache, provider, model, usage, artifacts, and worktree metadata |
-| Cache behavior | Prompt/options memoization | Explicit cache policy with mutating calls bypassing prompt-only cache |
-| Mutation safety | Worktree option, merge handled manually | Fail-closed worktree isolation; provider is not invoked if isolation fails |
-| Offline onboarding | Product-dependent | `--provider fake` works with no model configured |
-| Reports | Product UI | Local Markdown/HTML reports |
-| Dependencies | Product runtime | Python standard library only |
-| Extensibility | Claude environment | Add adapters for other agents, CLIs, APIs, or local models |
-
-The goal is not to outdo Claude as a model product. The goal is to make the dynamic workflow pattern portable, inspectable, and safe enough for local developer use.
+```bash
+owf resume 20260528-143201-a3f1
+```
 
 ---
 
-## Quickstart
+## Quickstart in 60 seconds
 
 ```bash
 git clone https://github.com/akakabrian/agent-workflows.git
@@ -107,7 +77,7 @@ cd agent-workflows
 pip install -e .
 
 owf new examples/my_first_workflow.py
-owf run examples/my_first_workflow.py --provider fake
+owf run examples/my_first_workflow.py --provider fake --home .workflows
 owf status latest
 owf output latest
 owf report latest --stdout
@@ -115,13 +85,234 @@ owf report latest --stdout
 
 You just ran a durable, resumable agent workflow without configuring a model provider.
 
-Python 3.11 or later is required. No runtime dependencies are required beyond the Python standard library.
+---
+
+## Primitives
+
+Import from `workflows` (short alias) or `agent_workflows` (canonical name).
+
+### `meta()`
+
+Declare workflow name, description, and phases at module level:
+
+```python
+meta(name="research", description="Fan-out research workflow", phases=["fetch", "synthesise"])
+```
+
+### `await agent(prompt, ...)`
+
+Make a single agent call.  Returns an `AgentResult`.
+
+```python
+result = await agent(
+    "Summarise the following text: ...",
+    label="summarise",         # human-readable name shown in calls/report
+    phase="summarise",         # optional phase grouping
+    schema={"type": "object",  # JSON Schema — result.value is validated JSON
+            "properties": {"summary": {"type": "string"}},
+            "required": ["summary"]},
+    provider="claude",         # override per-call; default is the run provider
+    model="claude-opus-4-8",   # pass through to the provider CLI
+    isolation="worktree",      # "none" (default) or "worktree" (fresh git tree)
+    cache_policy="auto",       # "auto" | "disabled" | "read_only" | "refresh"
+    read_scope=["docs/"],      # declarative, passed to the adapter
+    write_scope=["src/"],      # non-empty → mutating; cache bypassed
+    timeout_seconds=120,
+    cache_namespace="v2",      # isolate cache keys across script versions
+)
+print(result.ok, result.text, result.cache_status)
+# True  "Here is a summary..."  "miss"
+```
+
+Key `AgentResult` fields:
+
+| field | type | meaning |
+|---|---|---|
+| `.ok` | `bool` | `True` when the call succeeded and schema (if any) validated |
+| `.status` | `str` | `"done"`, `"failed"`, `"schema_failed"`, `"timeout"`, `"provider_failed"` |
+| `.text` | `str \| None` | raw text output |
+| `.value` | `Any \| None` | validated JSON value when a schema was given |
+| `.cache_status` | `str` | `"hit"`, `"miss"`, `"bypassed"`, `"disabled"` |
+| `.input_tokens` | `int \| None` | tokens consumed (populated by real providers) |
+| `.output_tokens` | `int \| None` | tokens generated |
+| `.estimated_cost_usd` | `float \| None` | cost reported by the provider |
+| `.worktree_path` | `str \| None` | git worktree path when isolation was used |
+| `.changed_files` | `list[str]` | files modified in the worktree |
+
+Helpers: `.require_ok()`, `.value_or_raise()`, `.text_or_raise()`.
+
+Schema validation intentionally supports a small JSON Schema subset rather than
+full draft compliance: `type` checks for object, array, string, number,
+integer, boolean, and null; object `properties` and `required`; array `items`;
+and `enum`.
+
+### `await parallel(thunks, concurrency=None, fail_fast=False)`
+
+Fan out a list of zero-argument async callables and collect results in order:
+
+```python
+topics = ["climate", "economy", "health"]
+results = await parallel(
+    [lambda t=t: agent(f"Summarise recent news on: {t}", label=t) for t in topics],
+    concurrency=3,
+)
+```
+
+With `fail_fast=True`, cancellation is best-effort: the first failed result or
+exception stops scheduling new work and cancels still-pending tasks. Calls that
+already finished are returned with their normal result; cancelled or unscheduled
+calls are returned as `AgentResult(status="cancelled")`.
+
+### `await pipeline(items, fn, stop_on_error=False)`
+
+Process a sequence one item at a time:
+
+```python
+results = await pipeline(documents, lambda doc: agent(f"Review: {doc}"))
+```
+
+### `phase(name)` and `log(message, **meta)`
+
+Mark the current phase and emit structured log events:
+
+```python
+phase("analyse")
+log("processing", count=len(items), source="arxiv")
+```
+
+### `await workflow(path, args)`
+
+Invoke another workflow script as a nested call, sharing the parent's home
+and budget (one level of nesting):
+
+```python
+sub = await workflow("steps/fetch.py", args={"url": url})
+```
+
+### `budget`
+
+A module-level proxy for the run's token/cost budget:
+
+```python
+if budget.can_spend(2000):
+    result = await agent("...", label="expensive")
+
+print(budget.spent_tokens, budget.remaining_tokens)
+```
+
+---
+
+## CLI reference
+
+```
+owf init                              # initialise the local run store
+owf new <path>                        # scaffold a starter script
+owf examples                          # list bundled examples
+owf providers                         # list available providers (built-in + custom)
+owf usage                             # token/cost rollups across all runs
+owf prices [--refresh] [--url URL]    # show or refresh the model price table
+owf batch {submit|status|fetch|list}  # async batch jobs (~50% off)
+owf mcp                               # run an MCP stdio server exposing owf tools
+owf doctor                            # local environment diagnostics
+owf validate <script>                 # parse + check meta/main
+owf dry-run  <script> [OPTIONS]       # preview manifest, no execution
+owf run      <script> [OPTIONS]       # execute a workflow
+owf resume   <run_id>                 # replay, skipping cached read-only calls
+owf runs     [--limit N]              # list recorded runs, newest first
+owf status   <run_id|latest>          # run summary
+owf output   <run_id|latest>          # print output.json
+owf calls    <run_id|latest>          # list call records
+owf explain-cache <run_id|latest>     # per-call cache decision explanation
+owf report   <run_id|latest> [--html] [--out PATH] [--stdout]
+owf artifacts <run_id|latest>         # list stored artifacts
+owf cat      <call_id>  [--prompt]    # print a call's output or prompt
+```
+
+`run` and `dry-run` accept:
+
+```
+--provider {fake,claude,codex,openai,anthropic,gemini,deepseek,openrouter,google}
+--model MODEL
+--budget-tokens N
+--budget-cost-usd N.NN
+--cache-policy {auto,disabled,read_only,refresh}
+--args-json '{"key": "value"}'
+--arg KEY=VALUE            (repeatable)
+--json                     (machine-readable output)
+--home PATH                (override the .workflows home directory)
+--debug                    (print Python tracebacks for errors)
+```
+
+`resume` additionally accepts `--provider` and `--model` to override the
+original run's provider.
+
+---
+
+## MCP server
+
+`owf mcp` runs a [Model Context Protocol](https://modelcontextprotocol.io)
+server over stdio, so any MCP-capable agent (Claude Code, Codex, and others)
+can author, run, and inspect workflows as native tools instead of shelling out
+to the CLI. Like the rest of the package, the server is **stdlib-only** — no
+`mcp` SDK or other dependency is required.
+
+Register it with Claude Code:
+
+```bash
+claude mcp add owf -- owf mcp
+```
+
+Or add it to any MCP client config (`.mcp.json`, Claude Desktop, etc.):
+
+```json
+{
+  "mcpServers": {
+    "owf": {
+      "command": "owf",
+      "args": ["mcp"]
+    }
+  }
+}
+```
+
+### Tools
+
+| Tool | Purpose |
+|---|---|
+| `owf_run_workflow` | Execute a workflow script. Args: `path`, `args`, `provider`, `model`, `budget_tokens`, `budget_cost_usd`, `cache_policy`, `home`. |
+| `owf_status` | Run summary plus call records. Args: `run_id` (or `"latest"`), `home`. |
+| `owf_output` | The value returned by `main()` (output.json). Args: `run_id`, `home`. |
+| `owf_report` | Render a Markdown or HTML run report. Args: `run_id`, `format`, `home`. |
+| `owf_list_runs` | List recorded runs, newest first. Args: `limit`, `home`. |
+| `owf_read_artifact` | Read one artifact file from a run directory (path-traversal guarded). Args: `run_id`, `path`, `home`. |
+| `owf_new_workflow` | Scaffold a starter or example script. Args: `output_path`, `template_name`, `force`. |
+
+The tools wrap the same runtime functions as the CLI, so they share its
+durability, caching, and resume semantics. The default provider is `fake`, so
+an agent can exercise the full author → run → inspect loop offline before
+wiring up `claude` or `codex`. Each tool accepts an optional `home` to point at
+a specific `.workflows` store.
+
+Workflow scripts still run as trusted local Python (see
+[Safety](#safety)) — the MCP server adds a tool surface, not a sandbox. Only
+register it where you would run `owf` yourself.
+
+---
+
+## Agent skill
+
+[`SKILL.md`](SKILL.md) is a ready-to-use agent skill that teaches a model when
+to reach for `owf` and how to author, run, inspect, and resume workflows. Drop
+it into a skill-aware harness (e.g. as a Claude Code skill) so the agent knows
+the script structure, `agent()`/`parallel()`/`pipeline()` primitives, and the
+cache-safety rules. The skill pairs naturally with the MCP server above: the
+skill supplies the know-how, the MCP tools supply the hands.
 
 ---
 
 ## Installation
 
-From source:
+From source (editable install, recommended for development):
 
 ```bash
 git clone https://github.com/akakabrian/agent-workflows.git
@@ -130,520 +321,192 @@ pip install -e .
 owf --help
 ```
 
-PyPI package name, once published:
+PyPI package name (once published): `open-agent-workflows`.
+
+Python 3.11 or later is required. No other runtime dependencies.
+
+---
+
+## Providers
+
+Open Agent Workflows ships three kinds of provider, all standard-library only:
+an offline fake, local-CLI adapters that reuse a CLI's own auth, and direct HTTP
+API adapters that read keys from the environment.
+
+| Provider | Aliases | Kind | Default model | Auth |
+|---|---|---|---|---|
+| `fake` | `fixture` | Offline, deterministic. Returns schema fixtures or echoes prompts. | — | None |
+| `claude` | `claude-cli` | Local `claude` CLI (`claude -p --output-format json`). | CLI default | Reuses the CLI's own auth. |
+| `codex` | `codex-cli` | Local `codex exec` CLI with JSONL events. | CLI default | Reuses the CLI's own auth. |
+| `openai` | — | HTTP `POST /chat/completions`. | `gpt-5.4-mini` | `OPENAI_API_KEY` |
+| `deepseek` | — | OpenAI-compatible HTTP API. | `deepseek-v4-flash` | `DEEPSEEK_API_KEY` |
+| `openrouter` | — | OpenAI-compatible HTTP API. | `openai/gpt-5.5` | `OPENROUTER_API_KEY` |
+| `anthropic` | — | Anthropic Messages API (`/v1/messages`). | `claude-sonnet-4-6` | `ANTHROPIC_API_KEY` |
+| `gemini` | `google` | Gemini `generateContent` API. | `gemini-3.5-flash` | `GEMINI_API_KEY` (or `GOOGLE_API_KEY`) |
+
+> **Naming:** `claude`/`codex` are the **local CLI** adapters (no API key
+> needed). `openai`/`anthropic`/`gemini` are the **direct HTTP API** adapters
+> (key from the environment). Use `--model` to pick any model the endpoint
+> supports; the table lists only the fallback used when no model is given.
+
+The `openai` adapter is a generic OpenAI-compatible client, so the same code
+also targets Groq, Together, Fireworks, Mistral, xAI, or a local
+vLLM/Ollama/LM Studio server — point it at the base URL and key env var. Keys
+are read from the environment at call time and are **never** written to the run
+database, manifests, or artifacts. Open Agent Workflows does not manage or store
+credentials.
+
+### Structured output, cost, and retries
+
+- **Native structured output.** When a call has a `schema`, the OpenAI-compatible
+  adapter uses strict `json_schema` mode when the schema is fully specified (no
+  optional fields), else JSON-object mode; Anthropic uses forced tool-use; Gemini
+  sets a JSON response MIME type. If the returned JSON still fails validation, the
+  adapter re-prompts once with the validation error before giving up.
+- **Cost estimation.** API adapters populate `estimated_cost_usd` from a price
+  table so `--budget-cost-usd` works. Defaults are approximate; refresh them with
+  `owf prices --refresh --url <json>` (writes `~/.workflows/prices.json`), and see
+  `owf usage` for token/cost rollups across runs. The `claude` CLI reports its
+  own exact cost.
+- **Retries.** Transient HTTP failures (429, 5xx, connection errors) are retried
+  with linear backoff.
+- **Per-provider concurrency.** Fan-out (`parallel()`) is capped per provider so
+  large jobs don't trip rate limits. Tune with `OWF_PROVIDER_<NAME>_CONCURRENCY`,
+  a provider's `concurrency` field in `providers.json`, or global
+  `OWF_MAX_CONCURRENCY` (default 8).
+
+Run `owf providers` to list everything available (built-in + custom) with each
+provider's adapter, key env var, and default model.
+
+### Custom providers (no code)
+
+Register any additional endpoint without writing code — point the
+OpenAI-compatible adapter (or `anthropic`/`gemini`) at a base URL. Two sources,
+merged (env overrides the file per field):
+
+**A JSON file** at `$OWF_PROVIDERS_FILE` (default `~/.workflows/providers.json`):
+
+```json
+{
+  "providers": {
+    "groq":  {"base_url": "https://api.groq.com/openai/v1",
+              "api_key_env": "GROQ_API_KEY", "default_model": "llama-3.3-70b"},
+    "local": {"kind": "openai", "base_url": "http://localhost:11434/v1",
+              "api_key_env": "OLLAMA_KEY", "default_model": "qwen2.5"}
+  }
+}
+```
+
+**Environment variables** `OWF_PROVIDER_<NAME>_{BASE_URL,API_KEY_ENV,MODEL,KIND}`:
 
 ```bash
-pip install open-agent-workflows
+export OWF_PROVIDER_GROQ_BASE_URL=https://api.groq.com/openai/v1
+export OWF_PROVIDER_GROQ_API_KEY_ENV=GROQ_API_KEY
+export OWF_PROVIDER_GROQ_MODEL=llama-3.3-70b
+owf run my_workflow.py --provider groq
 ```
+
+`kind` is `openai` (default), `anthropic`, or `gemini`. OpenAI-compatible custom
+providers require `base_url`, `api_key_env`, and `default_model`. Built-in
+provider names take precedence over custom ones.
 
 ---
 
-## What it gives you
+## Async batch (≈50% off)
 
-### Claude-style dynamic workflow primitives
+For large sets of **independent** prompts, batch APIs run them asynchronously
+(up to ~24h) at roughly half the synchronous price. `owf batch` is a standalone
+flow — it does not run a workflow script; you hand it a JSONL of prompts:
 
-Import from `workflows` for a short script-friendly API:
+```bash
+# prompts.jsonl — one object per line; "prompt" is required, the rest optional
+# {"prompt": "Summarise X", "custom_id": "a", "model": "gpt-5.4-mini", "system": "..."}
 
-```python
-from workflows import agent, parallel, pipeline, phase, log, workflow, budget, meta
+owf batch submit prompts.jsonl --provider anthropic        # -> batch_id: msgbatch_01ABC...
+owf batch status msgbatch_01ABC                            # in_progress | ended/completed
+owf batch fetch  msgbatch_01ABC --out results.jsonl        # writes results when ready
+owf batch list                                             # locally-tracked batches
 ```
 
-or from the canonical package:
-
-```python
-from agent_workflows import agent, parallel, pipeline
-```
-
-### A durable local run store
-
-By default, workflow state is stored next to the script:
-
-```text
-<script_dir>/.workflows/
-  workflow.sqlite
-  runs/
-    <run_id>/
-      manifest.json
-      summary.md
-      output.json
-      report.md
-      report.html
-      calls/
-        <call_id>/
-          prompt.txt
-          output.txt
-          output.json
-          error.txt
-```
-
-### A provider-agnostic adapter layer
-
-Initial providers:
-
-| Provider | Aliases | How it works | Auth |
-|---|---|---|---|
-| `fake` | `fixture` | Offline deterministic provider for examples and tests. | None |
-| `claude` | `anthropic`, `claude-cli` | Shells out to Claude CLI print mode. | Uses the CLI's auth. |
-| `codex` | `openai`, `codex-cli` | Shells out to Codex CLI exec mode. | Uses the CLI's auth. |
-
-Open Agent Workflows does not manage or store credentials. Provider CLIs keep their own authentication.
-
----
-
-## Core API
-
-### `meta()`
-
-Declare workflow metadata:
-
-```python
-from workflows import meta
-
-meta(
-    name="research-scan",
-    description="Fan out research tasks and synthesize findings",
-    phases=["Plan", "Scan", "Synthesize"],
-)
-```
-
-Metadata is stored in the run manifest and report.
-
----
-
-### `await agent(prompt, ...)`
-
-Run one agent call.
-
-```python
-result = await agent(
-    "Summarize the following document in three bullets: ...",
-    label="summarize:doc-1",
-    phase="Summarize",
-)
-```
-
-`agent()` returns an `AgentResult`, not just a string.
-
-Important fields:
-
-| Field | Meaning |
-|---|---|
-| `.ok` | Whether the call succeeded and schema validation passed. |
-| `.status` | Stable status such as `done`, `failed`, `schema_failed`, `timeout`, `provider_failed`. |
-| `.text` | Raw text output, when present. |
-| `.value` | Validated JSON value, when a schema is used. |
-| `.cache_status` | `hit`, `miss`, `bypassed`, or `disabled`. |
-| `.provider` / `.model` | Provider and model used for this call. |
-| `.input_tokens` / `.output_tokens` | Provider-reported token usage, when available. |
-| `.estimated_cost_usd` | Provider-reported cost, when available. |
-| `.prompt_path` | Local path to saved prompt artifact. |
-| `.output_text_path` / `.output_json_path` | Local path to saved output artifact. |
-| `.worktree_path` | Git worktree path, when worktree isolation was used and changes were made. |
-| `.changed_files` | Changed files detected in the worktree. |
-
-Convenience helpers:
-
-```python
-result.require_ok()
-text = result.text_or_raise()
-value = result.value_or_raise()
-```
-
----
-
-### Structured output with schemas
-
-Pass a JSON Schema subset to request and validate structured output:
-
-```python
-FINDINGS_SCHEMA = {
-    "type": "object",
-    "properties": {
-        "summary": {"type": "string"},
-        "risks": {"type": "array", "items": {"type": "string"}},
-    },
-    "required": ["summary", "risks"],
-}
-
-result = await agent(
-    "Review this design and return risks.",
-    schema=FINDINGS_SCHEMA,
-    label="review:design",
-)
-
-findings = result.value_or_raise()
-```
-
-The built-in validator intentionally supports a practical subset of JSON Schema so the runtime can stay dependency-free.
-
-Supported basics include:
-
-- `object`
-- `array`
-- `string`
-- `number`
-- `integer`
-- `boolean`
-- `null`
-- `properties`
-- `required`
-- `items`
-- `enum`
-
----
-
-### `await parallel(thunks, concurrency=None, fail_fast=False)`
-
-Run independent agent calls concurrently and preserve result order.
-
-```python
-topics = ["architecture", "security", "tests"]
-
-results = await parallel(
-    [
-        lambda topic=topic: agent(
-            f"Review the project for {topic} issues.",
-            label=f"review:{topic}",
-        )
-        for topic in topics
-    ],
-    concurrency=3,
-)
-```
-
-Use `parallel()` when subtasks are independent and speed matters.
-
-With `fail_fast=True`, cancellation is best-effort: the first failed result or exception stops scheduling new work and cancels still-pending tasks. Calls that already finished are returned with their normal result; cancelled or unscheduled calls are returned as `AgentResult(status="cancelled")`.
-
----
-
-### `await pipeline(items, fn, stop_on_error=False)`
-
-Process items sequentially.
-
-```python
-results = await pipeline(
-    documents,
-    lambda doc: agent(f"Extract action items from: {doc}", label="extract"),
-)
-```
-
-Use `pipeline()` when order matters, later steps depend on earlier results, or sequential execution is safer.
-
----
-
-### `phase(name)` and `log(message, **metadata)`
-
-Mark progress and emit structured events.
-
-```python
-phase("Scan")
-log("starting", count=len(items))
-
-# ...
-
-phase("Synthesize")
-log("completed", successful=sum(1 for r in results if r.ok))
-```
-
-Phases and logs appear in run records and reports.
-
----
-
-### `await workflow(path, args=None)`
-
-Invoke a child workflow script.
-
-```python
-child = await workflow("steps/fetch_sources.py", args={"query": "workflow runtimes"})
-return {"child_output": child["output"]}
-```
-
-Child workflows share the parent's home, budget, and provider defaults. Nesting is limited to one child level for now.
-
----
-
-### `budget`
-
-Inspect and enforce run budget from inside the script.
-
-```python
-from workflows import budget
-
-if budget.can_spend(20_000):
-    result = await agent("Do the expensive review.", label="deep-review")
-
-print(budget.spent_tokens, budget.remaining_tokens)
-```
-
-The runtime updates budget usage as provider adapters report tokens/cost.
-
----
-
-## Agent call options
-
-```python
-result = await agent(
-    prompt,
-    label="scan:hive",
-    phase="Scan",
-    schema=FINDINGS_SCHEMA,
-    provider="claude",
-    model="claude-opus-4-5",
-    agent_type="code-reviewer",
-    isolation="worktree",
-    cache_policy="auto",
-    cache_namespace="v2",
-    read_scope=["src/", "tests/"],
-    write_scope=["src/auth.py"],
-    permissions={"shell": "read-only"},
-    timeout_seconds=600,
-    metadata={"repo": "hive"},
-)
-```
-
-| Option | Meaning |
-|---|---|
-| `label` | Human-readable call label shown in status/report output. |
-| `phase` | Phase grouping. Defaults to the current `phase()`. |
-| `schema` | JSON Schema subset for structured output validation. |
-| `provider` | Per-call provider override. |
-| `model` | Per-call model override. |
-| `agent_type` | Optional provider/native agent profile name. |
-| `isolation` | `none` or `worktree`. |
-| `cache_policy` | `auto`, `disabled`, `read_only`, or `refresh`. |
-| `cache_namespace` | Manual cache namespace for versioning or busting cache. |
-| `read_scope` | Declarative read scope metadata. |
-| `write_scope` | Declarative write scope; non-empty means mutating. |
-| `permissions` | Declarative permission metadata for adapters/humans. |
-| `timeout_seconds` | Provider call timeout. |
-| `metadata` | Extra metadata stored with the call. |
-
-`read_scope`, `write_scope`, and `permissions` are metadata for adapters and human review. They are not an OS sandbox.
+Supported providers: `anthropic` (Message Batches) and `openai` (Batches API).
+Each result row carries `text`, token counts, and a `cost_usd` already halved by
+the batch discount. A small record under `~/.workflows/batches/<id>.json`
+remembers the provider/model so `status`/`fetch` need only the id. Keys come
+from `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` and are never persisted.
 
 ---
 
 ## Cache and resume semantics
 
-Open Agent Workflows uses local SQLite-backed cache records for safe replay.
+Every read-only `agent()` call is keyed on a hash of the prompt, options,
+schema, provider, model, and script content. On a subsequent `owf run` or
+`owf resume`, matching calls replay from the SQLite cache instantly and are
+reported as `cache_status="hit"`.
 
-### Read-only calls
+**Mutating calls bypass the cache.** Any call with a non-empty `write_scope`
+or `isolation="worktree"` is classified as mutating. The runtime never reads
+from or writes to the prompt-only cache for mutating calls — the cached output
+would not prove the filesystem side effects still hold — and reports
+`cache_status="bypassed"`. Mutating calls always re-execute on resume.
 
-Read-only calls are keyed by a hash of:
+`owf explain-cache <run_id>` prints a per-call explanation:
 
-- runtime version
-- script hash
-- prompt
-- schema
-- provider
-- model
-- agent type
-- cache namespace
-- selected options
-
-If the same read-only call appears in a later run or resume, it can replay instantly from cache.
-
-```text
-miss -> first live execution
-hit  -> reused prior read-only result
 ```
-
-### `cache_policy="refresh"`
-
-`refresh` skips the cache read, runs the call live, and writes the result back to the same reusable cache key that `auto` / `read_only` use.
-
-Use this when you want to recompute a read-only call without changing the prompt.
-
-### Mutating calls
-
-Mutating calls bypass prompt-only cache.
-
-A call is mutating if it has:
-
-- non-empty `write_scope`
-- `isolation="worktree"`
-- future write-capable adapter behavior
-
-Mutating calls always re-execute on resume because a cached text result does not prove filesystem side effects still exist.
-
-```text
-bypassed -> mutating call; prompt-only cache is unsafe
-```
-
-Inspect cache decisions:
-
-```bash
-owf explain-cache latest
-```
-
-Example:
-
-```text
-miss      scan:hive: no prior cached result existed for this call key
-hit       scan:books: reused a prior read-only result
-bypassed  patch: mutating call; prompt-only cache is unsafe
+miss      greeting: no prior cached result existed for this call key
+hit       summarise: reused a prior read-only result (prompt, options, schema, provider, and model matched)
+bypassed  patch: mutating call (write scope or worktree isolation); prompt-only cache is unsafe
 ```
 
 ---
 
 ## Worktree isolation
 
-For mutating work, prefer:
+Setting `isolation="worktree"` on an agent call creates a fresh git worktree
+for that call. The adapter runs inside the worktree; its file edits never
+touch your working tree. After the call, `result.worktree_path`,
+`result.worktree_branch`, and `result.changed_files` tell you what changed.
+Nothing is auto-merged — you review and merge manually.
 
-```python
-await agent(
-    "Implement the fix in src/auth.py.",
-    write_scope=["src/auth.py"],
-    isolation="worktree",
-)
-```
-
-Worktree isolation creates a fresh git worktree for the call. The adapter runs inside that worktree so file edits do not touch your current working tree.
-
-After the call:
-
-```python
-print(result.worktree_path)
-print(result.worktree_branch)
-print(result.changed_files)
-```
-
-Nothing is auto-merged. Review and merge manually.
-
-Worktree isolation fails closed: if the runtime cannot create a worktree, the provider is not invoked and the call records `AgentResult(ok=False, status="worktree_failed")`.
+Worktree isolation fails closed: if the script directory is not inside a git
+repository, or if `git worktree add` fails, the provider is not invoked and
+the call records `AgentResult(ok=False, status="worktree_failed")`. The runtime
+will not silently run a worktree-isolated call in your current working tree.
 
 ---
 
-## CLI reference
+## Artifact layout
 
-```text
-owf init                              Initialize local workflow store
-owf new <path>                        Scaffold a starter workflow script
-owf examples                          List bundled examples
-owf doctor                            Run local environment diagnostics
-owf validate <script>                 Parse and check workflow metadata/main()
-owf dry-run <script> [OPTIONS]        Preview run manifest without execution
-owf run <script> [OPTIONS]            Execute a workflow
-owf resume <run_id|latest>            Replay a prior run, reusing safe cache hits
-owf status <run_id|latest>            Show run summary
-owf output <run_id|latest>            Print output.json
-owf calls <run_id|latest>             List call records
-owf explain-cache <run_id|latest>     Explain per-call cache decisions
-owf report <run_id|latest>            Write Markdown or HTML report
-owf artifacts <run_id|latest>         List stored artifacts
-owf cat <call_id> [--prompt]          Print a call output or prompt
 ```
-
-Common run options:
-
-```text
---provider fake|claude|codex
---model MODEL
---budget-tokens N
---budget-cost-usd N.NN
---cache-policy auto|disabled|read_only|refresh
---args-json '{"key": "value"}'
---arg KEY=VALUE
---json
---home PATH
---debug
-```
-
-Examples:
-
-```bash
-owf run examples/hello_workflow.py --provider fake
-owf run examples/parallel_research.py --provider claude
-owf run examples/multi_model_review.py --provider codex --model gpt-5.5
-owf report latest --html
+<script_dir>/.workflows/          # default home (override with --home)
+  workflow.sqlite                 # run index, calls, events, cache
+  runs/
+    <run_id>/
+      manifest.json               # run parameters
+      summary.md                  # human summary
+      output.json                 # return value of main()
+      report.md / report.html     # generated by owf report
+      calls/
+        <call_id>/
+          prompt.txt
+          output.txt | output.json
 ```
 
 ---
 
-## For agents: when to use a workflow
+## Safety
 
-Use Open Agent Workflows when the task benefits from durable, structured, multi-agent execution.
+Workflow scripts are **trusted local Python**. The runtime loads a script with
+`importlib` and executes its `async main(args)` with your user's full
+privileges. There is no sandbox, container, or permission boundary.
 
-Good workflow triggers:
+- Only run scripts you wrote or have reviewed.
+- Do not run untrusted scripts from the internet without reading them first.
+- API keys are read by adapters from the environment or the CLI's own auth.
+  They are never written to the run database, manifests, or artifacts.
+- Do not place secrets in prompts, `args`, or `metadata` — those are persisted
+  to the run store.
 
-- the user explicitly says "workflow", "dynamic workflow", "fan out", "parallelize", or "use multiple agents"
-- the task can be split into independent subtasks
-- the result should be resumable, auditable, or reported
-- multiple files, repos, documents, models, test cases, or hypotheses need the same treatment
-- one agent should produce work and another should verify it
-- structured JSON outputs or schema validation would reduce ambiguity
-- the work is long-running or interruption-prone
-
-Do not use a workflow for simple one-shot answers, tiny edits, or tasks that need clarification before decomposition.
-
-Safe default:
-
-```text
-Direct answer for simple tasks.
-Workflow for parallel, long-running, schema-driven, or verification-heavy tasks.
-Ask before mutating files or spending real provider tokens.
-```
-
-### Explicit mode
-
-Use a workflow when the user says:
-
-```text
-use a workflow
-make this a workflow
-run a dynamic workflow
-fan this out
-parallelize this
-use multiple agents
-run separate agents on this
-compare multiple approaches
-have one agent implement and another verify
-use owf
-```
-
-### Auto mode
-
-When operating in an auto/high-effort mode, choose a workflow without waiting for the word "workflow" when the task is broad, decomposable, parallelizable, verification-heavy, or valuable to preserve as an auditable run.
-
-Before executing a mutating or expensive workflow, describe the plan and ask for confirmation.
-
----
-
-## Comparison with Claude Dynamic Workflows
-
-| Capability | Claude Dynamic Workflows | Open Agent Workflows |
-|---|---|---|
-| Core workflow pattern | Script coordinates multiple agent calls | Same pattern, implemented as local Python |
-| Provider | Claude | Agent-agnostic adapter layer |
-| Visibility | Product-managed progress UI | SQLite + local artifacts + Markdown/HTML reports |
-| Return value | Text/object | `AgentResult` with status, cache, usage, artifact, and worktree metadata |
-| Resume/cache | Product-managed memoization | Explicit cache policy and `owf explain-cache` |
-| Mutating calls | Worktree available, merge manual | Mutating calls never use prompt-only cache; worktree isolation fails closed |
-| Offline mode | Product-dependent | Built-in fake provider |
-| Extensibility | Claude environment | Add adapters for CLIs, APIs, or local models |
-
-Claude made the pattern visible. Open Agent Workflows makes the pattern portable and inspectable.
-
----
-
-## Safety model
-
-Workflow scripts are trusted local Python.
-
-The runtime loads a script with `importlib` and executes its `async main(args)` in your Python process with your user's privileges. There is no sandbox, container, or permission boundary.
-
-Treat workflow scripts like any other Python program:
-
-- only run scripts you wrote or reviewed
-- do not run untrusted workflows from the internet
-- assume prompts, args, outputs, metadata, and logs may be persisted
-- do not put secrets in prompts, args, metadata, or logs
-- use `--provider fake` for safe local examples
-- use `isolation="worktree"` for file-mutating agent calls
-
-Provider credentials are handled by the provider adapters or provider CLIs. Open Agent Workflows does not manage or store credentials.
-
-See [`SECURITY.md`](SECURITY.md) for details.
+See [SECURITY.md](SECURITY.md) for the full security model.
 
 ---
 
@@ -652,62 +515,20 @@ See [`SECURITY.md`](SECURITY.md) for details.
 | File | What it shows |
 |---|---|
 | `examples/hello_workflow.py` | Minimal `agent()` + `log()` |
-| `examples/schema_validation.py` | JSON Schema validation |
-| `examples/parallel_research.py` | `parallel()` fan-out and aggregation |
-| `examples/multi_model_review.py` | Same prompt across providers/models |
+| `examples/schema_validation.py` | JSON Schema enforcement on a single call |
+| `examples/parallel_research.py` | `parallel()` fan-out with schema aggregation |
+| `examples/multi_model_review.py` | Same prompt across multiple providers/models |
 
-Run examples offline:
+Run any example offline:
 
 ```bash
-owf run examples/hello_workflow.py --provider fake
-owf run examples/schema_validation.py --provider fake
-owf run examples/parallel_research.py --provider fake
+owf run examples/schema_validation.py   --provider fake
+owf run examples/parallel_research.py  --provider fake
 owf run examples/multi_model_review.py --provider fake
 ```
 
 ---
 
-## Design principles
-
-Open Agent Workflows should stay:
-
-- small
-- local
-- scriptable
-- provider-agnostic
-- dependency-light
-- honest about safety
-- inspectable through files and SQLite
-- practical for real agent workflows
-
-It should not become:
-
-- a hidden cloud service
-- a heavy DAG framework
-- a model vendor wrapper only
-- a sandbox it cannot actually enforce
-- a replacement for human review of mutating agent work
-
----
-
-## Project status
-
-Pre-1.0.
-
-The runtime is useful, but the API and storage schema may still change. Pin versions for serious use.
-
-Good early use cases:
-
-- offline workflow prototyping with `--provider fake`
-- multi-agent research scripts
-- schema-validated extraction
-- model/provider comparison
-- repo/document scanning
-- durable agent-call reports
-- experiments inspired by Claude-style dynamic workflows
-
----
-
 ## License
 
-MIT — see [`LICENSE`](LICENSE).
+MIT — see [LICENSE](LICENSE).

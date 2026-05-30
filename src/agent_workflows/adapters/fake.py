@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from ..models import AgentResult, WorkflowArtifact
+from ..models import AgentResult
 from ..validation import validate_schema, SchemaValidationError
 
 

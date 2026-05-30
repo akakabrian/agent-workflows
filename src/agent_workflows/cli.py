@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import shutil
 import sqlite3
 import sys
@@ -23,7 +24,7 @@ from .runtime import (
     run_status,
     validate_script,
 )
-from .storage import get_artifacts, get_call, initialize
+from .storage import get_artifacts, get_call, initialize, list_runs
 
 
 TEMPLATE = """from workflows import agent, log, phase
@@ -180,6 +181,22 @@ def cmd_status(ns: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_runs(ns: argparse.Namespace) -> int:
+    home = _resolve_home(ns)
+    initialize(home)
+    rows = list_runs(home)
+    if ns.limit and ns.limit > 0:
+        rows = rows[: ns.limit]
+    if ns.json:
+        print(_dump(rows))
+    else:
+        for row in rows:
+            name = row.get("workflow_name") or "-"
+            created = row.get("created_at") or ""
+            print(f"{row['id']}  {row.get('status') or '':9}  {name}  {created}".rstrip())
+    return 0
+
+
 def cmd_output(ns: argparse.Namespace) -> int:
     home = _resolve_home(ns)
     run_id = _resolve_run_id(home, ns.run_id)
@@ -311,12 +328,123 @@ def cmd_doctor(ns: argparse.Namespace) -> int:
         status = "ready" if path else "missing"
         checks.append((f"{binary} CLI", status, path or "not found on PATH"))
 
+    # API-provider keys (presence only — values are never read or printed).
+    for provider, env_var in (
+        ("openai", "OPENAI_API_KEY"),
+        ("anthropic", "ANTHROPIC_API_KEY"),
+        ("gemini", "GEMINI_API_KEY"),
+        ("deepseek", "DEEPSEEK_API_KEY"),
+        ("openrouter", "OPENROUTER_API_KEY"),
+    ):
+        present = bool(os.environ.get(env_var))
+        checks.append((f"{provider} key", "ready" if present else "info", f"${env_var} {'set' if present else 'unset'}"))
+
     if ns.json:
         print(_dump([{"check": name, "status": status, "detail": detail} for name, status, detail in checks]))
     else:
         for name, status, detail in checks:
             print(f"{status:9} {name}: {detail}")
     return 0 if all(status != "attention" for _, status, _ in checks) else 1
+
+
+def cmd_usage(ns: argparse.Namespace) -> int:
+    from .runtime import render_usage_markdown, usage_rollup
+
+    home = _resolve_home(ns)
+    initialize(home)
+    data = usage_rollup(home)
+    print(_dump(data) if ns.json else render_usage_markdown(data))
+    return 0
+
+
+def cmd_prices(ns: argparse.Namespace) -> int:
+    from .adapters._common import price_overrides_path, price_table, refresh_prices
+
+    if ns.refresh:
+        url = ns.url or os.environ.get("OWF_PRICES_URL")
+        if not url:
+            raise WorkflowError("price refresh needs --url or $OWF_PRICES_URL")
+        count = refresh_prices(url)
+        print(f"wrote {count} price entries to {price_overrides_path()}")
+        return 0
+    table = price_table()
+    if ns.json:
+        print(_dump({k: list(v) for k, v in table.items()}))
+    else:
+        for name in sorted(table):
+            in_price, out_price = table[name]
+            print(f"{name:28} in=${in_price:<8} out=${out_price:<8} (USD / 1M tokens)")
+    return 0
+
+
+def cmd_batch(ns: argparse.Namespace) -> int:
+    from .adapters import batch as batch_mod
+
+    home = Path(ns.home).expanduser() if getattr(ns, "home", None) else None
+    command = ns.batch_command
+
+    if command == "submit":
+        out = batch_mod.submit_batch(ns.provider, ns.prompts, model=ns.model, home=home)
+        if ns.json:
+            print(_dump(out))
+        else:
+            print(f"batch_id: {out['batch_id']}")
+            print(f"provider: {out['provider']}  model: {out['model']}  requests: {out['count']}")
+            print(f"fetch with: owf batch fetch {out['batch_id']}")
+        return 0
+
+    if command == "status":
+        out = batch_mod.batch_status(ns.batch_id, home=home)
+        print(_dump(out) if ns.json else f"{out['batch_id']}: {out.get('raw_status')} (done={out['done']}) counts={out.get('counts')}")
+        return 0
+
+    if command == "fetch":
+        out = batch_mod.fetch_batch(ns.batch_id, home=home)
+        if not out["done"]:
+            print(_dump(out) if ns.json else f"{out['batch_id']}: not ready ({out.get('raw_status')})")
+            return 0
+        results = out["results"]
+        if ns.out:
+            with open(Path(ns.out).expanduser(), "w", encoding="utf-8") as handle:
+                for row in results:
+                    handle.write(json.dumps(row) + "\n")
+            print(f"wrote {len(results)} results to {ns.out} (est. batch cost ${out['total_cost_usd']:.4f})")
+        else:
+            print(_dump(out))
+        return 0
+
+    if command == "list":
+        rows = batch_mod.list_records(home)
+        if ns.json:
+            print(_dump(rows))
+        else:
+            for row in rows:
+                print(f"{row['batch_id']:32} {row.get('provider',''):10} {row.get('model',''):24} requests={row.get('count')}")
+        return 0
+
+    raise WorkflowError("usage: owf batch {submit|status|fetch|list}")
+
+
+def cmd_providers(ns: argparse.Namespace) -> int:
+    from .adapters import list_providers
+
+    rows = list_providers()
+    if ns.json:
+        print(_dump(rows))
+    else:
+        for row in rows:
+            key = row.get("api_key_env") or "-"
+            model = row.get("default_model") or "-"
+            detail = f"key=${key} model={model}" if row["source"] != "builtin" or row.get("api_key_env") else ""
+            print(f"{row['name']:12} {row['source']:8} {row['adapter']:24} {detail}".rstrip())
+    return 0
+
+
+def cmd_mcp(ns: argparse.Namespace) -> int:
+    from . import mcp_server
+
+    home = Path(ns.home).expanduser() if getattr(ns, "home", None) else None
+    return mcp_server.serve(home=home)
 
 
 def cmd_examples(ns: argparse.Namespace) -> int:
@@ -391,6 +519,11 @@ def build_parser() -> argparse.ArgumentParser:
     status.add_argument("--json", action="store_true")
     status.set_defaults(func=cmd_status)
 
+    runs = sub.add_parser("runs", help="List recorded runs, newest first", parents=[common])
+    runs.add_argument("--limit", type=int, help="Maximum number of runs to show")
+    runs.add_argument("--json", action="store_true")
+    runs.set_defaults(func=cmd_runs)
+
     output = sub.add_parser("output", help="Print run output", parents=[common])
     output.add_argument("run_id")
     output.add_argument("--json", action="store_true")
@@ -413,6 +546,44 @@ def build_parser() -> argparse.ArgumentParser:
     examples = sub.add_parser("examples", help="List bundled examples", parents=[common])
     examples.add_argument("--json", action="store_true")
     examples.set_defaults(func=cmd_examples)
+
+    mcp = sub.add_parser("mcp", help="Run an MCP stdio server exposing owf tools", parents=[common])
+    mcp.set_defaults(func=cmd_mcp)
+
+    providers = sub.add_parser("providers", help="List available providers (built-in + custom)", parents=[common])
+    providers.add_argument("--json", action="store_true")
+    providers.set_defaults(func=cmd_providers)
+
+    usage = sub.add_parser("usage", help="Token/cost rollups across all runs", parents=[common])
+    usage.add_argument("--json", action="store_true")
+    usage.set_defaults(func=cmd_usage)
+
+    prices = sub.add_parser("prices", help="Show or refresh the model price table", parents=[common])
+    prices.add_argument("--refresh", action="store_true", help="Fetch prices from --url / $OWF_PRICES_URL into the overrides file")
+    prices.add_argument("--url", help="Price table URL for --refresh")
+    prices.add_argument("--json", action="store_true")
+    prices.set_defaults(func=cmd_prices)
+
+    batch = sub.add_parser("batch", help="Async batch jobs (50%% off; anthropic, openai)", parents=[common])
+    batch_sub = batch.add_subparsers(dest="batch_command", required=True)
+    b_submit = batch_sub.add_parser("submit", help="Submit a JSONL of prompts as a batch", parents=[common])
+    b_submit.add_argument("prompts", help="Path to a JSONL file ({\"prompt\": ...} per line)")
+    b_submit.add_argument("--provider", required=True, choices=["anthropic", "openai"])
+    b_submit.add_argument("--model")
+    b_submit.add_argument("--json", action="store_true")
+    b_submit.set_defaults(func=cmd_batch)
+    b_status = batch_sub.add_parser("status", help="Show batch processing status", parents=[common])
+    b_status.add_argument("batch_id")
+    b_status.add_argument("--json", action="store_true")
+    b_status.set_defaults(func=cmd_batch)
+    b_fetch = batch_sub.add_parser("fetch", help="Fetch batch results when ready", parents=[common])
+    b_fetch.add_argument("batch_id")
+    b_fetch.add_argument("--out", help="Write results as JSONL to this path")
+    b_fetch.add_argument("--json", action="store_true")
+    b_fetch.set_defaults(func=cmd_batch)
+    b_list = batch_sub.add_parser("list", help="List locally-tracked batches", parents=[common])
+    b_list.add_argument("--json", action="store_true")
+    b_list.set_defaults(func=cmd_batch)
 
     explain = sub.add_parser("explain-cache", help="Explain each call's cache decision", parents=[common])
     explain.add_argument("run_id")

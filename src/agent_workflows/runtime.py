@@ -15,6 +15,7 @@ from types import ModuleType
 from typing import Any, Awaitable, Callable, Iterable, TypeVar
 
 from .adapters import build_adapter
+from .adapters._config import provider_concurrency
 from .models import (
     AgentResult,
     WorkflowArtifact,
@@ -32,6 +33,7 @@ from .storage import (
     get_run,
     initialize,
     latest_run_id,
+    list_runs,
     make_call_id,
     record_artifact,
     record_call,
@@ -72,6 +74,7 @@ class WorkflowRuntime:
         # Otherwise adapters are resolved per call from the call's provider.
         self.adapter_override = adapter
         self._adapter_cache: dict[str, Any] = {}
+        self._provider_semaphores: dict[str, asyncio.Semaphore] = {}
         self.provider = provider
         self.model = model
         self.workflow_depth = workflow_depth
@@ -94,6 +97,16 @@ class WorkflowRuntime:
         if key not in self._adapter_cache:
             self._adapter_cache[key] = build_adapter(key)
         return self._adapter_cache[key]
+
+    def provider_semaphore(self, provider: str | None) -> asyncio.Semaphore:
+        """Per-provider concurrency gate, so fan-out across many calls does not
+        exceed a provider's rate limits. Lazily created on the running loop."""
+        key = (provider or self.provider or "fake").lower()
+        sem = self._provider_semaphores.get(key)
+        if sem is None:
+            sem = asyncio.Semaphore(provider_concurrency(key))
+            self._provider_semaphores[key] = sem
+        return sem
 
     def snapshot(self) -> dict[str, Any]:
         return {
@@ -559,7 +572,8 @@ async def agent(
     adapter = runtime.resolve_adapter(request.provider)
 
     started = time.perf_counter()
-    result = await adapter.run(request)
+    async with runtime.provider_semaphore(request.provider):
+        result = await adapter.run(request)
     artifacts: list[WorkflowArtifact] = []
     result.call_id = call_id
     result.label = label
@@ -1042,7 +1056,6 @@ def run_script(
     budget_tokens: int | None = None,
     budget_cost_usd: float | None = None,
     cache_policy: str = "auto",
-    resumed_from_run_id: str | None = None,
 ) -> dict[str, Any]:
     return asyncio.run(
         _arun_script(
@@ -1054,7 +1067,6 @@ def run_script(
             budget_tokens=budget_tokens,
             budget_cost_usd=budget_cost_usd,
             cache_policy=cache_policy,
-            resumed_from_run_id=resumed_from_run_id,
         )
     )
 
@@ -1079,7 +1091,6 @@ def resume_run(
         budget_tokens=previous.get("budget_total_tokens"),
         budget_cost_usd=previous.get("budget_total_cost_usd"),
         cache_policy=previous.get("cache_policy") or "auto",
-        resumed_from_run_id=run_id,
     )
 
 
@@ -1137,6 +1148,73 @@ def build_report(home: str | Path, run_id: str) -> dict[str, Any]:
     return {"run": run, "calls": calls, "cache_counts": cache_counts, "failures": failures}
 
 
+def usage_rollup(home: str | Path) -> dict[str, Any]:
+    """Aggregate token/cost usage across all runs, grouped by provider and model.
+
+    Returns ``{"totals": {...}, "by_provider": [...], "by_model": [...],
+    "runs": N}``. Cost sums the per-call ``estimated_cost_usd`` recorded at run
+    time, so it reflects whatever the price table knew then."""
+    home_path = Path(home)
+    runs = list_runs(home_path)
+    by_provider: dict[str, dict[str, Any]] = {}
+    by_model: dict[str, dict[str, Any]] = {}
+    totals = {"calls": 0, "input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0}
+
+    def bucket(store: dict[str, dict[str, Any]], key: str) -> dict[str, Any]:
+        return store.setdefault(key, {"calls": 0, "input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0})
+
+    for run in runs:
+        for call in get_calls(home_path, run["id"]):
+            provider = call.get("provider") or "unknown"
+            model = call.get("model") or "unknown"
+            in_tok = call.get("input_tokens") or 0
+            out_tok = call.get("output_tokens") or 0
+            cost = call.get("estimated_cost_usd") or 0.0
+            for store, key in ((by_provider, provider), (by_model, f"{provider}/{model}")):
+                row = bucket(store, key)
+                row["calls"] += 1
+                row["input_tokens"] += in_tok
+                row["output_tokens"] += out_tok
+                row["cost_usd"] = round(row["cost_usd"] + cost, 6)
+            totals["calls"] += 1
+            totals["input_tokens"] += in_tok
+            totals["output_tokens"] += out_tok
+            totals["cost_usd"] = round(totals["cost_usd"] + cost, 6)
+
+    def rows(store: dict[str, dict[str, Any]], label: str) -> list[dict[str, Any]]:
+        return [{label: name, **vals} for name, vals in sorted(store.items(), key=lambda kv: -kv[1]["cost_usd"])]
+
+    return {
+        "runs": len(runs),
+        "totals": totals,
+        "by_provider": rows(by_provider, "provider"),
+        "by_model": rows(by_model, "model"),
+    }
+
+
+def render_usage_markdown(data: dict[str, Any]) -> str:
+    t = data["totals"]
+    lines = [
+        "# Usage across runs",
+        "",
+        f"- Runs: {data['runs']}",
+        f"- Calls: {t['calls']}",
+        f"- Tokens: {t['input_tokens']} in / {t['output_tokens']} out",
+        f"- Estimated cost: ${t['cost_usd']:.4f}",
+        "",
+        "## By provider",
+        "",
+        "| provider | calls | in | out | cost |",
+        "| --- | --- | --- | --- | --- |",
+    ]
+    for row in data["by_provider"]:
+        lines.append(f"| {row['provider']} | {row['calls']} | {row['input_tokens']} | {row['output_tokens']} | ${row['cost_usd']:.4f} |")
+    lines += ["", "## By model", "", "| model | calls | in | out | cost |", "| --- | --- | --- | --- | --- |"]
+    for row in data["by_model"]:
+        lines.append(f"| {row['model']} | {row['calls']} | {row['input_tokens']} | {row['output_tokens']} | ${row['cost_usd']:.4f} |")
+    return "\n".join(lines) + "\n"
+
+
 def render_report_markdown(data: dict[str, Any]) -> str:
     run = data["run"]
     calls = data["calls"]
@@ -1148,7 +1226,7 @@ def render_report_markdown(data: dict[str, Any]) -> str:
         f"- Script: `{run.get('script_path')}`",
         f"- Provider/model: `{run.get('provider')}` / `{run.get('model')}`",
         f"- Budget: {run.get('budget_spent_tokens') or 0} / {run.get('budget_total_tokens') if run.get('budget_total_tokens') is not None else '∞'} tokens",
-        f"- Cache: " + ", ".join(f"{v} {k}" for k, v in data["cache_counts"].items()) if data["cache_counts"] else "- Cache: (no calls)",
+        "- Cache: " + ", ".join(f"{v} {k}" for k, v in data["cache_counts"].items()) if data["cache_counts"] else "- Cache: (no calls)",
         "",
         "## Calls",
         "",

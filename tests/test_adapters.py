@@ -10,12 +10,14 @@ import tempfile
 import unittest
 from pathlib import Path
 
-import agent_workflows.adapters as adapters
 from agent_workflows.adapters import (
     AdapterError,
+    AnthropicAPIAdapter,
     ClaudeCLIAdapter,
     CodexCLIAdapter,
     FakeAdapter,
+    GeminiAPIAdapter,
+    OpenAICompatibleAdapter,
     build_adapter,
 )
 from agent_workflows.adapters import cli as cli_adapter
@@ -45,9 +47,9 @@ class BuildAdapterTests(unittest.TestCase):
         adapter = build_adapter("claude")
         self.assertIsInstance(adapter, ClaudeCLIAdapter)
 
-    def test_anthropic_provider(self):
+    def test_anthropic_provider_is_http_api(self):
         adapter = build_adapter("anthropic")
-        self.assertIsInstance(adapter, ClaudeCLIAdapter)
+        self.assertIsInstance(adapter, AnthropicAPIAdapter)
 
     def test_claude_cli_provider(self):
         adapter = build_adapter("claude-cli")
@@ -61,9 +63,21 @@ class BuildAdapterTests(unittest.TestCase):
         adapter = build_adapter("codex-cli")
         self.assertIsInstance(adapter, CodexCLIAdapter)
 
-    def test_openai_provider_aliases_codex(self):
+    def test_openai_provider_is_http_api(self):
         adapter = build_adapter("openai")
-        self.assertIsInstance(adapter, CodexCLIAdapter)
+        self.assertIsInstance(adapter, OpenAICompatibleAdapter)
+
+    def test_deepseek_and_openrouter_use_openai_compatible(self):
+        deepseek = build_adapter("deepseek")
+        self.assertIsInstance(deepseek, OpenAICompatibleAdapter)
+        self.assertEqual(deepseek.api_key_env, "DEEPSEEK_API_KEY")
+        openrouter = build_adapter("openrouter")
+        self.assertIsInstance(openrouter, OpenAICompatibleAdapter)
+        self.assertIn("openrouter.ai", openrouter.base_url)
+
+    def test_gemini_provider_is_http_api(self):
+        self.assertIsInstance(build_adapter("gemini"), GeminiAPIAdapter)
+        self.assertIsInstance(build_adapter("google"), GeminiAPIAdapter)
 
     def test_unknown_provider_raises(self):
         with self.assertRaises(AdapterError):
@@ -88,7 +102,7 @@ class BuildAdapterTests(unittest.TestCase):
 
     def test_case_insensitive_anthropic(self):
         adapter = build_adapter("Anthropic")
-        self.assertIsInstance(adapter, ClaudeCLIAdapter)
+        self.assertIsInstance(adapter, AnthropicAPIAdapter)
 
 
 # ---------------------------------------------------------------------------

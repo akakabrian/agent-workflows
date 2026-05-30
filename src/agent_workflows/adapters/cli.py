@@ -18,19 +18,17 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from ..models import AgentResult, WorkflowArtifact
+from ..models import AgentResult
+from ._common import (
+    AdapterError,
+    estimate_cost,
+)
+from ._common import ok_text_result as _ok_text
+from ._common import provider_failed_result as _provider_failed
+from ._common import schema_instruction as _schema_instruction
+from ._common import timed_out_result as _timed_out
 
-
-class AdapterError(RuntimeError):
-    """Raised when an adapter is misconfigured (e.g. binary missing)."""
-
-
-def _schema_instruction(schema: dict[str, Any]) -> str:
-    return (
-        "\n\nReturn ONLY a single JSON value that conforms to this JSON Schema. "
-        "Do not wrap it in Markdown code fences or add prose:\n"
-        + json.dumps(schema, separators=(",", ":"))
-    )
+__all__ = ["AdapterError", "ClaudeCLIAdapter", "CodexCLIAdapter"]
 
 
 async def _run_subprocess(
@@ -170,7 +168,8 @@ class CodexCLIAdapter:
         if code != 0 and not text:
             return _provider_failed(request, (stderr or stdout or "codex exited nonzero").strip())
 
-        return _ok_text(request, text, usage=usage, cost=None)
+        cost = estimate_cost(_real_model(request.model), usage.get("input_tokens"), usage.get("output_tokens"))
+        return _ok_text(request, text, usage=usage, cost=cost)
 
 
 def _parse_codex_events(stdout: str) -> tuple[dict[str, Any], str | None, str]:
@@ -227,39 +226,6 @@ def _real_model(model: str | None) -> str | None:
     return model
 
 
-def _ok_text(request, text: str, *, usage: dict[str, Any], cost: float | None) -> AgentResult:
-    clean_usage = {k: v for k, v in usage.items() if v is not None}
-    artifacts: list[WorkflowArtifact] = []
-    return AgentResult(
-        ok=True,
-        status="done",
-        value=None,
-        text=text,
-        provider=request.provider,
-        model=request.model,
-        agent_type=request.agent_type,
-        input_tokens=clean_usage.get("input_tokens"),
-        output_tokens=clean_usage.get("output_tokens"),
-        cache_read_tokens=clean_usage.get("cache_read_tokens"),
-        cache_write_tokens=clean_usage.get("cache_write_tokens"),
-        estimated_cost_usd=cost,
-        artifacts=artifacts,
-    )
-
-
-def _provider_failed(request, message: str) -> AgentResult:
-    return AgentResult(
-        ok=False,
-        status="provider_failed",
-        value=None,
-        text=None,
-        error=message,
-        provider=request.provider,
-        model=request.model,
-        agent_type=request.agent_type,
-    )
-
-
 def _missing_cli(request, *, provider: str, binary: str, exc: FileNotFoundError) -> AgentResult:
     return _provider_failed(
         request,
@@ -269,17 +235,4 @@ def _missing_cli(request, *, provider: str, binary: str, exc: FileNotFoundError)
             "Or run offline first:\n  owf run examples/hello_workflow.py --provider fake"
             f"\n\nDetails: {exc}"
         ),
-    )
-
-
-def _timed_out(request, timeout: int) -> AgentResult:
-    return AgentResult(
-        ok=False,
-        status="timeout",
-        value=None,
-        text=None,
-        error=f"provider call exceeded {timeout}s timeout",
-        provider=request.provider,
-        model=request.model,
-        agent_type=request.agent_type,
     )

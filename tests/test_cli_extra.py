@@ -316,6 +316,31 @@ class AdvertisedCommandSmokeTests(unittest.TestCase):
             code, out = _run_cli(["cat", call_id, "--home", str(home)])
             self.assertEqual(code, 0, out)
 
+    def test_runs_lists_recorded_runs(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            home = root / ".workflows"
+            run_id = _setup_run(root, home)
+
+            code, out = _run_cli(["runs", "--home", str(home), "--json"])
+            self.assertEqual(code, 0, out)
+            rows = json.loads(out)
+            self.assertTrue(any(row["id"] == run_id for row in rows))
+
+            code, out = _run_cli(["runs", "--home", str(home)])
+            self.assertEqual(code, 0, out)
+            self.assertIn(run_id, out)
+
+            code, out = _run_cli(["runs", "--home", str(home), "--limit", "1", "--json"])
+            self.assertEqual(code, 0, out)
+            self.assertEqual(len(json.loads(out)), 1)
+
+    def test_runs_on_empty_home_is_clean(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            code, out = _run_cli(["runs", "--home", str(Path(tmp) / ".workflows"), "--json"])
+            self.assertEqual(code, 0, out)
+            self.assertEqual(json.loads(out), [])
+
     def test_doctor_and_examples_commands(self):
         with tempfile.TemporaryDirectory() as tmp:
             code, out = _run_cli(["doctor", "--home", str(Path(tmp) / ".workflows")])

@@ -84,7 +84,7 @@ async def main(args):
 | `phase` | `str` | current phase | Group calls in the report |
 | `schema` | `dict` | — | JSON Schema; `.value` is validated on success |
 | `provider` | `str` | run default | Override per call: `"fake"`, `"claude"`, `"codex"` |
-| `model` | `str` | run default | E.g. `"claude-opus-4-5"`, `"o4-mini"` |
+| `model` | `str` | run default | E.g. `"claude-opus-4-8"`, `"gpt-5.5"` |
 | `isolation` | `str` | `"none"` | `"worktree"` → fresh git tree, never auto-merged |
 | `cache_policy` | `str` | `"auto"` | `"auto"`, `"disabled"`, `"read_only"`, `"refresh"` |
 | `write_scope` | `list[str]` | `[]` | Non-empty → mutating; cache always bypassed |
@@ -131,11 +131,16 @@ else:
 # Offline — fake adapter, deterministic, no keys needed (default)
 owf run my_workflow.py --provider fake
 
-# Real call via claude CLI (must be installed and authenticated)
-owf run my_workflow.py --provider claude --model claude-opus-4-5
+# Local CLIs — reuse the CLI's own auth, no API key in the environment
+owf run my_workflow.py --provider claude --model claude-opus-4-8
+owf run my_workflow.py --provider codex  --model gpt-5.5
 
-# Real call via codex CLI
-owf run my_workflow.py --provider codex --model o4-mini
+# Direct HTTP APIs — read the key from the environment
+OPENAI_API_KEY=...     owf run my_workflow.py --provider openai     --model gpt-5.4-mini
+ANTHROPIC_API_KEY=...  owf run my_workflow.py --provider anthropic  --model claude-sonnet-4-6
+GEMINI_API_KEY=...     owf run my_workflow.py --provider gemini     --model gemini-3.5-flash
+DEEPSEEK_API_KEY=...   owf run my_workflow.py --provider deepseek
+OPENROUTER_API_KEY=... owf run my_workflow.py --provider openrouter --model anthropic/claude-opus-4.8
 
 # Pass args, set a token budget
 owf run my_workflow.py --provider fake --arg topic="renewable energy" --budget-tokens 50000
@@ -143,6 +148,26 @@ owf run my_workflow.py --provider fake --arg topic="renewable energy" --budget-t
 # Dry-run: preview the manifest without executing
 owf dry-run my_workflow.py --provider claude --json
 ```
+
+Provider naming: `claude`/`codex` are the **local CLI** adapters (no key
+needed); `openai`/`anthropic`/`gemini`/`deepseek`/`openrouter` are **HTTP API**
+adapters that read a key from the environment. The `openai` adapter is generic
+OpenAI-compatible, so it also targets Groq/Together/Ollama/etc. via base URL +
+key. Keys are never persisted to the run store. When a call has a `schema`, API
+adapters use native structured output (JSON mode / tool-use) and re-prompt once
+on a validation failure. Run `owf providers` to see what's available. Register
+extra endpoints without code via `~/.workflows/providers.json` or
+`OWF_PROVIDER_<NAME>_{BASE_URL,API_KEY_ENV,MODEL,KIND}` env vars.
+
+### Scaling and cost
+
+- **Fan-out** is capped per provider to avoid rate limits: tune with
+  `OWF_PROVIDER_<NAME>_CONCURRENCY` or `OWF_MAX_CONCURRENCY` (default 8).
+- **Cost**: API calls populate `estimated_cost_usd`; `owf usage` rolls up
+  tokens/cost across runs; `owf prices [--refresh]` shows/updates the price table.
+- **Batch (~50% off)** for large independent prompt sets:
+  `owf batch submit prompts.jsonl --provider anthropic|openai`, then
+  `owf batch fetch <id> --out results.jsonl`. Standalone — not a workflow run.
 
 ---
 
@@ -198,6 +223,28 @@ script content match.
 Workflow scripts run as ordinary Python in your process with no sandbox. Only
 run scripts you wrote or have reviewed. Do not run untrusted scripts from the
 internet without reading them first. See SECURITY.md for the full security model.
+
+---
+
+## MCP server (use tools instead of the CLI)
+
+If `owf` is registered as an MCP server (`owf mcp`), prefer its tools over
+shelling out:
+
+| Tool | Use it to |
+|---|---|
+| `owf_run_workflow` | Run a script (`path`, optional `args`, `provider`, `model`, budgets, `cache_policy`, `home`) |
+| `owf_status` | Get run status + call records (`run_id` or `"latest"`) |
+| `owf_output` | Get the value returned by `main()` |
+| `owf_report` | Render a Markdown or HTML run report |
+| `owf_list_runs` | List recorded runs, newest first |
+| `owf_read_artifact` | Read one file under the run directory (e.g. `calls/<id>/output.json`) |
+| `owf_new_workflow` | Scaffold a starter or example script |
+
+The tools share the CLI's durability, caching, and resume semantics, and
+default to the offline `fake` provider. Register the server with
+`claude mcp add owf -- owf mcp`. The same trusted-script caveat applies — the
+MCP server is a tool surface, not a sandbox.
 
 ---
 
