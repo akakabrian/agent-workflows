@@ -82,6 +82,12 @@ class HandshakeTests(unittest.TestCase):
                 "owf_report",
                 "owf_list_runs",
                 "owf_read_artifact",
+                "owf_validate_workflow",
+                "owf_dry_run",
+                "owf_resume",
+                "owf_calls",
+                "owf_explain_cache",
+                "owf_artifacts",
                 "owf_new_workflow",
             },
         )
@@ -143,20 +149,81 @@ class ToolTests(unittest.TestCase):
         escape = _call("owf_read_artifact", {"run_id": run_id, "path": "../../etc/passwd", "home": str(self.home)})
         self.assertEqual(escape["error"]["code"], mcp_server.INVALID_PARAMS)
 
+    def test_read_artifact_paging(self):
+        run_id = self._run()
+        full = json.loads(_content_text(_call("owf_read_artifact", {"run_id": run_id, "path": "output.json", "home": str(self.home)})))
+        size = full["size_bytes"]
+        self.assertGreater(size, 4)
+        # A small window from offset 0 should report truncated + returned_bytes.
+        page = json.loads(_content_text(_call(
+            "owf_read_artifact", {"run_id": run_id, "path": "output.json", "home": str(self.home), "max_bytes": 4, "offset": 0}
+        )))
+        self.assertEqual(page["returned_bytes"], 4)
+        self.assertTrue(page["truncated"])
+        self.assertEqual(len(page["content"]), 4)
+        # Reading the whole thing is not truncated.
+        self.assertFalse(full["truncated"])
+
+    def test_parity_tools(self):
+        run_id = self._run()
+        script = self.root / "workflow.py"
+
+        validated = json.loads(_content_text(_call("owf_validate_workflow", {"path": str(script)})))
+        self.assertEqual(validated["workflow"]["name"], "mcp-test")
+
+        manifest = json.loads(_content_text(_call("owf_dry_run", {"path": str(script), "provider": "fake"})))
+        self.assertIn("workflow", manifest)
+
+        calls = json.loads(_content_text(_call("owf_calls", {"run_id": run_id, "home": str(self.home)})))
+        self.assertEqual(calls[0]["label"], "greet")
+
+        cache = json.loads(_content_text(_call("owf_explain_cache", {"run_id": run_id, "home": str(self.home)})))
+        self.assertIn(cache[0]["cache_status"], {"miss", "hit", "bypassed", "disabled"})
+
+        artifacts = json.loads(_content_text(_call("owf_artifacts", {"run_id": run_id, "home": str(self.home)})))
+        self.assertTrue(any(a.get("kind") == "prompt" for a in artifacts))
+
+    def test_resume_replays(self):
+        run_id = self._run()
+        resumed = json.loads(_content_text(_call("owf_resume", {"run_id": "latest", "home": str(self.home)})))
+        self.assertEqual(resumed["status"], "done")
+        self.assertNotEqual(resumed["run_id"], "")
+        # The original run still exists.
+        self.assertTrue(run_id)
+
+    def test_new_workflow_workspace_guard(self):
+        # Default: escaping the workspace_root is rejected.
+        escape = _call("owf_new_workflow", {"output_path": "../escape.py", "workspace_root": str(self.root / "ws")})
+        self.assertEqual(escape["error"]["code"], mcp_server.INVALID_PARAMS)
+        self.assertIn("workspace_root", escape["error"]["message"])
+
+        # Within the root: allowed.
+        ok = json.loads(_content_text(_call("owf_new_workflow", {"output_path": "sub/wf.py", "workspace_root": str(self.root / "ws")})))
+        self.assertTrue(Path(ok["path"]).exists())
+        self.assertTrue(str(ok["path"]).startswith(str((self.root / "ws").resolve())))
+
+        # Absolute escape allowed only with allow_absolute=true.
+        abs_target = self.root / "outside" / "wf.py"
+        allowed = json.loads(_content_text(_call(
+            "owf_new_workflow", {"output_path": str(abs_target), "workspace_root": str(self.root / "ws"), "allow_absolute": True}
+        )))
+        self.assertTrue(Path(allowed["path"]).exists())
+
     def test_new_workflow_starter_and_example(self) -> None:
         target = self.root / "new" / "wf.py"
+        ws = {"workspace_root": str(self.root)}  # target is absolute and under root
         result = json.loads(
-            _content_text(_call("owf_new_workflow", {"output_path": str(target), "template_name": "hello"}))
+            _content_text(_call("owf_new_workflow", {"output_path": str(target), "template_name": "hello", **ws}))
         )
         self.assertTrue(Path(result["path"]).exists())
         self.assertIn("async def main", target.read_text(encoding="utf-8"))
 
         # Existing file without force is rejected.
-        err = _call("owf_new_workflow", {"output_path": str(target), "template_name": "hello"})
+        err = _call("owf_new_workflow", {"output_path": str(target), "template_name": "hello", **ws})
         self.assertEqual(err["error"]["code"], mcp_server.INVALID_PARAMS)
 
         # Unknown template name is rejected with a helpful message.
-        bad = _call("owf_new_workflow", {"output_path": str(self.root / "z.py"), "template_name": "nope"})
+        bad = _call("owf_new_workflow", {"output_path": str(self.root / "z.py"), "template_name": "nope", **ws})
         self.assertEqual(bad["error"]["code"], mcp_server.INVALID_PARAMS)
 
     def test_status_no_runs_is_error(self) -> None:

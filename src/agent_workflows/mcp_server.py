@@ -29,13 +29,21 @@ from typing import Any, Callable
 from .runtime import (
     WorkflowError,
     build_report,
+    draft_manifest,
+    explain_cache,
     latest_run,
     render_report_html,
     render_report_markdown,
+    resume_run,
     run_script,
     run_status,
+    validate_script,
 )
-from .storage import initialize, list_runs
+from .storage import get_artifacts, initialize, list_runs
+
+# Default cap on a single owf_read_artifact read, so a huge artifact can't blow
+# up the response. Callers can request a larger window explicitly via max_bytes.
+DEFAULT_MAX_ARTIFACT_BYTES = 200_000
 
 # Protocol version we implement; we echo the client's requested version when it
 # sends one, falling back to this default for older/unspecified clients.
@@ -188,6 +196,54 @@ def _tool_list_runs(arguments: dict[str, Any]) -> list[dict[str, Any]]:
     return rows
 
 
+def _tool_validate_workflow(arguments: dict[str, Any]) -> dict[str, Any]:
+    script = arguments.get("path")
+    if not script:
+        raise _RpcError(INVALID_PARAMS, "'path' is required")
+    return validate_script(Path(script).expanduser())
+
+
+def _tool_dry_run(arguments: dict[str, Any]) -> dict[str, Any]:
+    script = arguments.get("path")
+    if not script:
+        raise _RpcError(INVALID_PARAMS, "'path' is required")
+    args = arguments.get("args") or {}
+    if not isinstance(args, dict):
+        raise _RpcError(INVALID_PARAMS, "'args' must be an object")
+    return draft_manifest(
+        Path(script).expanduser(),
+        args=args,
+        provider=arguments.get("provider", "fake"),
+        model=arguments.get("model", "fake"),
+        budget_tokens=arguments.get("budget_tokens"),
+        budget_cost_usd=arguments.get("budget_cost_usd"),
+    )
+
+
+def _tool_resume(arguments: dict[str, Any]) -> dict[str, Any]:
+    home = _resolve_home(arguments)
+    run_id = _resolve_run_id(home, arguments.get("run_id"))
+    return resume_run(run_id, home=home, provider=arguments.get("provider"), model=arguments.get("model"))
+
+
+def _tool_calls(arguments: dict[str, Any]) -> list[dict[str, Any]]:
+    home = _resolve_home(arguments)
+    run_id = _resolve_run_id(home, arguments.get("run_id"))
+    return run_status(home, run_id)["calls"]
+
+
+def _tool_explain_cache(arguments: dict[str, Any]) -> list[dict[str, Any]]:
+    home = _resolve_home(arguments)
+    run_id = _resolve_run_id(home, arguments.get("run_id"))
+    return explain_cache(home, run_id)
+
+
+def _tool_artifacts(arguments: dict[str, Any]) -> list[dict[str, Any]]:
+    home = _resolve_home(arguments)
+    run_id = _resolve_run_id(home, arguments.get("run_id"))
+    return get_artifacts(home, run_id)
+
+
 def _tool_read_artifact(arguments: dict[str, Any]) -> dict[str, Any]:
     rel = arguments.get("path")
     if not rel:
@@ -202,11 +258,22 @@ def _tool_read_artifact(arguments: dict[str, Any]) -> dict[str, Any]:
         raise _RpcError(INVALID_PARAMS, f"path escapes the run directory: {rel!r}")
     if not target.exists() or not target.is_file():
         raise _RpcError(INVALID_PARAMS, f"artifact not found: {rel!r}")
+
+    size = target.stat().st_size
+    offset = max(int(arguments.get("offset") or 0), 0)
+    max_bytes = arguments.get("max_bytes")
+    max_bytes = int(max_bytes) if isinstance(max_bytes, int) and max_bytes > 0 else DEFAULT_MAX_ARTIFACT_BYTES
+    with target.open("rb") as handle:
+        handle.seek(offset)
+        chunk = handle.read(max_bytes)
     return {
         "run_id": run_id,
         "path": str(target.relative_to(base)),
-        "size_bytes": target.stat().st_size,
-        "content": target.read_text(encoding="utf-8", errors="replace"),
+        "size_bytes": size,
+        "offset": offset,
+        "returned_bytes": len(chunk),
+        "truncated": offset + len(chunk) < size,
+        "content": chunk.decode("utf-8", "replace"),
     }
 
 
@@ -214,7 +281,22 @@ def _tool_new_workflow(arguments: dict[str, Any]) -> dict[str, Any]:
     output_path = arguments.get("output_path")
     if not output_path:
         raise _RpcError(INVALID_PARAMS, "'output_path' is required")
-    path = Path(output_path).expanduser()
+
+    # Workspace guard: by default writes must stay under workspace_root (or cwd).
+    # Set allow_absolute=true to write anywhere the process can reach.
+    allow_absolute = bool(arguments.get("allow_absolute"))
+    root = Path(arguments.get("workspace_root") or Path.cwd()).expanduser().resolve()
+    raw = Path(output_path).expanduser()
+    if allow_absolute:
+        path = (raw if raw.is_absolute() else root / raw).resolve()
+    else:
+        path = (raw.resolve() if raw.is_absolute() else (root / raw).resolve())
+        if path != root and root not in path.parents:
+            raise _RpcError(
+                INVALID_PARAMS,
+                f"output_path escapes workspace_root ({root}); pass allow_absolute=true to override",
+            )
+
     if path.exists() and not arguments.get("force"):
         raise _RpcError(INVALID_PARAMS, f"{path} already exists (pass force=true to overwrite)")
 
@@ -343,7 +425,7 @@ TOOLS: dict[str, dict[str, Any]] = {
     "owf_read_artifact": {
         "handler": _tool_read_artifact,
         "returns_text": False,
-        "description": "Read one artifact file from a run directory (path is relative to the run's output dir).",
+        "description": "Read one artifact file from a run directory (path is relative to the run's output dir). Reads are bounded; use offset/max_bytes to page large files.",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -352,24 +434,87 @@ TOOLS: dict[str, dict[str, Any]] = {
                     "type": "string",
                     "description": "Artifact path relative to the run's output directory, e.g. 'calls/<id>/output.json'.",
                 },
+                "offset": {"type": "integer", "description": "Byte offset to start reading from (default 0).", "default": 0},
+                "max_bytes": {"type": "integer", "description": f"Max bytes to return (default {DEFAULT_MAX_ARTIFACT_BYTES}). Response includes returned_bytes and truncated."},
                 **_HOME_PROP,
             },
             "required": ["path"],
         },
     },
-    "owf_new_workflow": {
-        "handler": _tool_new_workflow,
+    "owf_validate_workflow": {
+        "handler": _tool_validate_workflow,
         "returns_text": False,
-        "description": "Scaffold a new workflow script from a starter or bundled example template.",
+        "description": "Parse a workflow script and return its declared meta (name/description/phases) without running it.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {"path": {"type": "string", "description": "Path to the workflow .py script."}},
+            "required": ["path"],
+        },
+    },
+    "owf_dry_run": {
+        "handler": _tool_dry_run,
+        "returns_text": False,
+        "description": "Draft a run manifest (provider/model/budget plan) without executing the workflow.",
         "inputSchema": {
             "type": "object",
             "properties": {
-                "output_path": {"type": "string", "description": "Where to write the new script."},
+                "path": {"type": "string", "description": "Path to the workflow .py script."},
+                "args": {"type": "object", "description": "Arguments dict passed to main(args)."},
+                "provider": {"type": "string", "default": "fake"},
+                "model": {"type": "string"},
+                "budget_tokens": {"type": "integer"},
+                "budget_cost_usd": {"type": "number"},
+            },
+            "required": ["path"],
+        },
+    },
+    "owf_resume": {
+        "handler": _tool_resume,
+        "returns_text": False,
+        "description": "Resume a prior run, replaying cached read-only calls and re-executing the rest.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                **_RUN_ID_PROP,
+                "provider": {"type": "string", "description": "Override the original run's provider."},
+                "model": {"type": "string", "description": "Override the original run's model."},
+                **_HOME_PROP,
+            },
+        },
+    },
+    "owf_calls": {
+        "handler": _tool_calls,
+        "returns_text": False,
+        "description": "List the call records for a run (index, label, phase, status, cache, tokens).",
+        "inputSchema": {"type": "object", "properties": {**_RUN_ID_PROP, **_HOME_PROP}},
+    },
+    "owf_explain_cache": {
+        "handler": _tool_explain_cache,
+        "returns_text": False,
+        "description": "Explain each call's cache decision (hit/miss/bypassed/disabled) with a reason.",
+        "inputSchema": {"type": "object", "properties": {**_RUN_ID_PROP, **_HOME_PROP}},
+    },
+    "owf_artifacts": {
+        "handler": _tool_artifacts,
+        "returns_text": False,
+        "description": "List stored artifacts for a run (kind, call id, size, path).",
+        "inputSchema": {"type": "object", "properties": {**_RUN_ID_PROP, **_HOME_PROP}},
+    },
+    "owf_new_workflow": {
+        "handler": _tool_new_workflow,
+        "returns_text": False,
+        "description": "Scaffold a new workflow script from a starter or bundled example template. Writes are confined to workspace_root (default cwd) unless allow_absolute=true.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "output_path": {"type": "string", "description": "Where to write the new script (relative to workspace_root by default)."},
                 "template_name": {
                     "type": "string",
                     "description": "Template to use: 'hello' (default) or a bundled example name (e.g. 'schema_validation').",
                     "default": "hello",
                 },
+                "workspace_root": {"type": "string", "description": "Root that writes must stay under (default: current working directory)."},
+                "allow_absolute": {"type": "boolean", "description": "Allow writing outside workspace_root.", "default": False},
                 "force": {"type": "boolean", "description": "Overwrite an existing file.", "default": False},
             },
             "required": ["output_path"],

@@ -280,12 +280,22 @@ Or add it to any MCP client config (`.mcp.json`, Claude Desktop, etc.):
 | Tool | Purpose |
 |---|---|
 | `owf_run_workflow` | Execute a workflow script. Args: `path`, `args`, `provider`, `model`, `budget_tokens`, `budget_cost_usd`, `cache_policy`, `home`. |
+| `owf_validate_workflow` | Parse a script and return its declared meta without running it. Args: `path`. |
+| `owf_dry_run` | Draft a run manifest (provider/model/budget plan) without executing. Args: `path`, `args`, `provider`, `model`, budgets. |
 | `owf_status` | Run summary plus call records. Args: `run_id` (or `"latest"`), `home`. |
 | `owf_output` | The value returned by `main()` (output.json). Args: `run_id`, `home`. |
+| `owf_calls` | List a run's call records (label/phase/status/cache/tokens). Args: `run_id`, `home`. |
+| `owf_explain_cache` | Explain each call's cache decision with a reason. Args: `run_id`, `home`. |
 | `owf_report` | Render a Markdown or HTML run report. Args: `run_id`, `format`, `home`. |
+| `owf_artifacts` | List stored artifacts for a run (kind/call/size/path). Args: `run_id`, `home`. |
+| `owf_read_artifact` | Read one artifact file (path-traversal guarded; bounded). Args: `run_id`, `path`, `offset`, `max_bytes`, `home`. Response includes `returned_bytes` + `truncated`. |
 | `owf_list_runs` | List recorded runs, newest first. Args: `limit`, `home`. |
-| `owf_read_artifact` | Read one artifact file from a run directory (path-traversal guarded). Args: `run_id`, `path`, `home`. |
-| `owf_new_workflow` | Scaffold a starter or example script. Args: `output_path`, `template_name`, `force`. |
+| `owf_resume` | Resume a prior run (replays cached read-only calls). Args: `run_id`, `provider`, `model`, `home`. |
+| `owf_new_workflow` | Scaffold a starter or example script. Writes confined to `workspace_root` (default cwd) unless `allow_absolute`. Args: `output_path`, `template_name`, `workspace_root`, `allow_absolute`, `force`. |
+
+The "check before running" loop — `owf_validate_workflow` → `owf_dry_run` →
+`owf_run_workflow` — lets an agent confirm a script parses and preview its
+manifest before spending tokens.
 
 The tools wrap the same runtime functions as the CLI, so they share its
 durability, caching, and resume semantics. The default provider is `fake`, so

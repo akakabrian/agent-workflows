@@ -234,17 +234,21 @@ shelling out:
 | Tool | Use it to |
 |---|---|
 | `owf_run_workflow` | Run a script (`path`, optional `args`, `provider`, `model`, budgets, `cache_policy`, `home`) |
-| `owf_status` | Get run status + call records (`run_id` or `"latest"`) |
+| `owf_validate_workflow` | Parse a script + return its meta without running it |
+| `owf_dry_run` | Draft a run manifest (no execution) — preview before spending |
+| `owf_status` / `owf_calls` | Run summary / per-call records (`run_id` or `"latest"`) |
 | `owf_output` | Get the value returned by `main()` |
-| `owf_report` | Render a Markdown or HTML run report |
-| `owf_list_runs` | List recorded runs, newest first |
-| `owf_read_artifact` | Read one file under the run directory (e.g. `calls/<id>/output.json`) |
-| `owf_new_workflow` | Scaffold a starter or example script |
+| `owf_explain_cache` | Why each call hit/missed/bypassed the cache |
+| `owf_report` / `owf_artifacts` | Render a report / list stored artifact files |
+| `owf_read_artifact` | Read one file under the run dir (bounded: `offset`/`max_bytes`, returns `truncated`) |
+| `owf_list_runs` / `owf_resume` | List runs / resume a prior run |
+| `owf_new_workflow` | Scaffold a script (writes confined to `workspace_root` unless `allow_absolute`) |
 
-The tools share the CLI's durability, caching, and resume semantics, and
-default to the offline `fake` provider. Register the server with
-`claude mcp add owf -- owf mcp`. The same trusted-script caveat applies — the
-MCP server is a tool surface, not a sandbox.
+Safe loop: `owf_validate_workflow` → `owf_dry_run` → `owf_run_workflow`. The
+tools share the CLI's durability, caching, and resume semantics, and default to
+the offline `fake` provider. Register with `claude mcp add owf -- owf mcp`. The
+same trusted-script caveat applies — the MCP server is a tool surface, not a
+sandbox.
 
 ---
 
