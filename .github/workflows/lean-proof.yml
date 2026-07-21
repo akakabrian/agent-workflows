@@ -35,6 +35,8 @@ jobs:
             lake update
             echo '$ lake exe cache get'
             lake exe cache get
+            echo '$ lake build FormalConjectures.WrittenOnTheWallII.GraphConjecture146 FormalConjecturesForMathlib.WrittenOnTheWallII.GraphConjecture142Proof'
+            lake build FormalConjectures.WrittenOnTheWallII.GraphConjecture146 FormalConjecturesForMathlib.WrittenOnTheWallII.GraphConjecture142Proof
             echo '$ lake env lean -DwarningAsError=true WOWII146.lean'
             lake env lean -DwarningAsError=true WOWII146.lean
           } > lean-ci.log 2>&1
