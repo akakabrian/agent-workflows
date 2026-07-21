@@ -1,0 +1,20 @@
+import FormalConjectures.WrittenOnTheWallII.GraphConjecture146
+import FormalConjecturesForMathlib.WrittenOnTheWallII.GraphConjecture142Proof
+
+open Classical
+open SimpleGraph
+
+#check SimpleGraph.conjecture142_integral_splice
+#check SimpleGraph.diam_add_one_le_largestInducedTreeSize_splice
+#check SimpleGraph.eccSet_maxEccentricityVertices_add_one_le_diam_splice
+#check SimpleGraph.maxEccentricityVertices_nonempty_splice
+#check SimpleGraph.exists_eccSet_witness_splice
+#check SimpleGraph.exists_dist_eq_diam
+#check SimpleGraph.exists_eccent_eq_radius
+#check SimpleGraph.radius_ne_top_iff
+#check SimpleGraph.ediam_le_two_mul_radius
+#check SimpleGraph.dist_eq_one_iff_adj
+#check SimpleGraph.Connected.exists_walk_length_eq_dist
+#check SimpleGraph.exists_walk_of_dist_ne_zero
+#check SimpleGraph.Walk.IsPath
+#check SimpleGraph.Walk.IsCycle
