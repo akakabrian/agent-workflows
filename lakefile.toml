@@ -1,0 +1,11 @@
+name = "wowii146"
+version = "0.1.0"
+defaultTargets = ["WOWII146"]
+
+[[require]]
+name = "formal_conjectures"
+git = "https://github.com/google-deepmind/formal-conjectures.git"
+rev = "b8b5208aa5d01f5f91c49ca516bf09cae8d93693"
+
+[[lean_lib]]
+name = "WOWII146"
