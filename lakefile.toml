@@ -1,0 +1,11 @@
+name = "wowii146"
+version = "0.1.0"
+defaultTargets = ["WOWII146"]
+
+[[require]]
+name = "formal_conjectures"
+git = "https://github.com/AlperTheKing/formal-conjectures.git"
+rev = "46bf39015f5c3c3ba3bfcf9f752b4b1e49b584ac"
+
+[[lean_lib]]
+name = "WOWII146"
