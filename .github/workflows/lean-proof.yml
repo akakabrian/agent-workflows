@@ -1,6 +1,8 @@
 name: Lean proof CI
 
 on:
+  push:
+    branches: [main, wowii-146-proof]
   pull_request:
     branches: [main]
   workflow_dispatch:
