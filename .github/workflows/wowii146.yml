@@ -3,6 +3,8 @@ name: Verify WOWII 146 Lean proof
 on:
   push:
     branches: [wowii-146-proof]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
