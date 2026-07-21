@@ -1,6 +1,8 @@
 name: Lean proof CI
 
 on:
+  schedule:
+    - cron: '*/5 * * * *'
   push:
     branches: [main, wowii-146-proof]
   pull_request:
@@ -8,7 +10,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   verify:
@@ -16,15 +18,37 @@ jobs:
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: wowii-146-proof
+          fetch-depth: 0
       - name: Install elan
         run: |
-          set -o pipefail
-          curl -sSfL https://github.com/leanprover/elan/releases/download/v4.1.2/elan-x86_64-unknown-linux-gnu.tar.gz | tar xz
-          ./elan-init -y --default-toolchain none
+          curl --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y --default-toolchain none
           echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
-      - name: Resolve dependencies
-        run: lake update
-      - name: Download Mathlib cache
-        run: lake exe cache get
-      - name: Compile proof
-        run: lake env lean -DwarningAsError=true WOWII146.lean
+      - name: Verify and capture log
+        id: verify
+        shell: bash
+        run: |
+          set +e
+          {
+            echo '$ lake update'
+            lake update
+            echo '$ lake exe cache get'
+            lake exe cache get
+            echo '$ lake env lean -DwarningAsError=true WOWII146.lean'
+            lake env lean -DwarningAsError=true WOWII146.lean
+          } > lean-ci.log 2>&1
+          status=$?
+          echo "exit_status=$status" >> "$GITHUB_OUTPUT"
+          printf '\nEXIT_STATUS=%s\n' "$status" >> lean-ci.log
+          exit 0
+      - name: Publish log to proof branch
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -f lean-ci.log
+          git commit -m "ci: publish Lean verification log" || true
+          git push origin HEAD:wowii-146-proof
+      - name: Fail job when Lean failed
+        if: steps.verify.outputs.exit_status != '0'
+        run: exit 1
