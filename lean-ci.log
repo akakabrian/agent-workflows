@@ -24,202 +24,202 @@ info: batteries: checking out revision 'b25b36a7caf8e237e7d1e6121543078a06777c8a
 info: Cli: cloning https://github.com/leanprover/lean4-cli
 info: Cli: checking out revision '55c37290ff6186e2e965d68cf853a57c0702db82'
 info: mathlib: running post-update hooks
-✔ [5/23] Built Cache.Init (448ms)
-✔ [6/23] Built Batteries.Data.String.Basic (540ms)
-✔ [7/23] Built Cache.Lean (581ms)
-✔ [8/23] Built Cache.Init:c.o (168ms)
-✔ [9/23] Built Batteries.Data.String.Basic:c.o (224ms)
-✔ [10/23] Built Cache.Lean:c.o (193ms)
-✔ [11/23] Built Batteries.Data.Array.Match (1.2s)
-✔ [12/23] Built Batteries.Data.Array.Match:c.o (350ms)
-✔ [13/23] Built Batteries.Data.String.Matcher (445ms)
-✔ [14/23] Built Batteries.Data.String.Matcher:c.o (242ms)
-✔ [15/23] Built Cache.IO (1.6s)
-✔ [16/23] Built Cache.Hashing (766ms)
-✔ [17/23] Built Cache.Hashing:c.o (571ms)
+✔ [5/23] Built Cache.Init (389ms)
+✔ [6/23] Built Cache.Lean (545ms)
+✔ [7/23] Built Cache.Init:c.o (123ms)
+✔ [8/23] Built Batteries.Data.String.Basic (628ms)
+✔ [9/23] Built Cache.Lean:c.o (230ms)
+✔ [10/23] Built Batteries.Data.String.Basic:c.o (140ms)
+✔ [11/23] Built Batteries.Data.Array.Match (1.1s)
+✔ [12/23] Built Batteries.Data.Array.Match:c.o (318ms)
+✔ [13/23] Built Batteries.Data.String.Matcher (473ms)
+✔ [14/23] Built Batteries.Data.String.Matcher:c.o (225ms)
+✔ [15/23] Built Cache.IO (1.7s)
+✔ [16/23] Built Cache.Hashing (743ms)
+✔ [17/23] Built Cache.Hashing:c.o (576ms)
 ✔ [18/23] Built Cache.IO:c.o (1.9s)
 ✔ [19/23] Built Cache.Requests (1.8s)
-✔ [20/23] Built Cache.Main (695ms)
-✔ [21/23] Built Cache.Main:c.o (574ms)
+✔ [20/23] Built Cache.Main (677ms)
+✔ [21/23] Built Cache.Main:c.o (575ms)
 ✔ [22/23] Built Cache.Requests:c.o (1.8s)
-✔ [23/23] Built cache:exe (449ms)
+✔ [23/23] Built cache:exe (464ms)
   % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
                                  Dload  Upload   Total   Spent    Left  Speed
   0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
-100 1125k  100 1125k    0     0  3943k      0 --:--:-- --:--:-- --:--:-- 3943k
+100 1125k  100 1125k    0     0  2992k      0 --:--:-- --:--:-- --:--:-- 2992k
 
 installing leantar 0.1.16
 Fetching ProofWidgets cloud release... done!
 Current branch: HEAD
 Using cache (Azure) from origin: leanprover-community/mathlib4
 Attempting to download 7869 file(s) from leanprover-community/mathlib4 cache
-Downloaded: 1 file(s) [attempted 1/7869 = 0%, 16 KB/s]Downloaded: 88 file(s) [attempted 88/7869 = 1%, 814 KB/s]Downloaded: 183 file(s) [attempted 183/7869 = 2%, 754 KB/s]Downloaded: 295 file(s) [attempted 295/7869 = 3%, 2316 KB/s]Downloaded: 399 file(s) [attempted 399/7869 = 5%, 305 KB/s]Downloaded: 515 file(s) [attempted 515/7869 = 6%, 649 KB/s]Downloaded: 634 file(s) [attempted 634/7869 = 8%, 254 KB/s]Downloaded: 755 file(s) [attempted 755/7869 = 9%, 236 KB/s]Downloaded: 872 file(s) [attempted 872/7869 = 11%, 831 KB/s]Downloaded: 995 file(s) [attempted 995/7869 = 12%, 560 KB/s]Downloaded: 1110 file(s) [attempted 1110/7869 = 14%, 353 KB/s]Downloaded: 1222 file(s) [attempted 1222/7869 = 15%, 2447 KB/s]Downloaded: 1339 file(s) [attempted 1339/7869 = 17%, 2690 KB/s]Downloaded: 1459 file(s) [attempted 1459/7869 = 18%, 4613 KB/s]Downloaded: 1580 file(s) [attempted 1580/7869 = 20%, 1312 KB/s]Downloaded: 1699 file(s) [attempted 1699/7869 = 21%, 2702 KB/s]Downloaded: 1815 file(s) [attempted 1815/7869 = 23%, 1762 KB/s]Downloaded: 1924 file(s) [attempted 1924/7869 = 24%, 356 KB/s]Downloaded: 2045 file(s) [attempted 2045/7869 = 25%, 1653 KB/s]Downloaded: 2161 file(s) [attempted 2161/7869 = 27%, 4208 KB/s]Downloaded: 2282 file(s) [attempted 2282/7869 = 28%, 2127 KB/s]Downloaded: 2396 file(s) [attempted 2396/7869 = 30%, 2223 KB/s]Downloaded: 2514 file(s) [attempted 2514/7869 = 31%, 2588 KB/s]Downloaded: 2630 file(s) [attempted 2630/7869 = 33%, 217 KB/s]Downloaded: 2751 file(s) [attempted 2751/7869 = 34%, 674 KB/s]Downloaded: 2870 file(s) [attempted 2870/7869 = 36%, 432 KB/s]Downloaded: 2988 file(s) [attempted 2988/7869 = 37%, 699 KB/s]Downloaded: 3114 file(s) [attempted 3114/7869 = 39%, 447 KB/s]Downloaded: 3232 file(s) [attempted 3232/7869 = 41%, 636 KB/s]Downloaded: 3350 file(s) [attempted 3350/7869 = 42%, 1482 KB/s]Downloaded: 3472 file(s) [attempted 3472/7869 = 44%, 2521 KB/s]Downloaded: 3590 file(s) [attempted 3590/7869 = 45%, 3121 KB/s]Downloaded: 3718 file(s) [attempted 3718/7869 = 47%, 299 KB/s]Downloaded: 3830 file(s) [attempted 3830/7869 = 48%, 365 KB/s]Downloaded: 3953 file(s) [attempted 3953/7869 = 50%, 524 KB/s]Downloaded: 4067 file(s) [attempted 4067/7869 = 51%, 871 KB/s]Downloaded: 4187 file(s) [attempted 4187/7869 = 53%, 1034 KB/s]Downloaded: 4308 file(s) [attempted 4308/7869 = 54%, 363 KB/s]Downloaded: 4422 file(s) [attempted 4422/7869 = 56%, 638 KB/s]Downloaded: 4533 file(s) [attempted 4533/7869 = 57%, 3709 KB/s]Downloaded: 4635 file(s) [attempted 4635/7869 = 58%, 258 KB/s]Downloaded: 4752 file(s) [attempted 4752/7869 = 60%, 218 KB/s]Downloaded: 4861 file(s) [attempted 4861/7869 = 61%, 343 KB/s]Downloaded: 4974 file(s) [attempted 4974/7869 = 63%, 1244 KB/s]Downloaded: 5083 file(s) [attempted 5083/7869 = 64%, 2738 KB/s]Downloaded: 5204 file(s) [attempted 5204/7869 = 66%, 836 KB/s]Downloaded: 5318 file(s) [attempted 5318/7869 = 67%, 508 KB/s]Downloaded: 5433 file(s) [attempted 5433/7869 = 69%, 599 KB/s]Downloaded: 5543 file(s) [attempted 5543/7869 = 70%, 2063 KB/s]Downloaded: 5664 file(s) [attempted 5664/7869 = 71%, 410 KB/s]Downloaded: 5785 file(s) [attempted 5785/7869 = 73%, 185 KB/s]Downloaded: 5903 file(s) [attempted 5903/7869 = 75%, 1707 KB/s]Downloaded: 6017 file(s) [attempted 6017/7869 = 76%, 1960 KB/s]Downloaded: 6131 file(s) [attempted 6131/7869 = 77%, 910 KB/s]Downloaded: 6257 file(s) [attempted 6257/7869 = 79%, 140 KB/s]Downloaded: 6377 file(s) [attempted 6377/7869 = 81%, 268 KB/s]Downloaded: 6501 file(s) [attempted 6501/7869 = 82%, 2712 KB/s]Downloaded: 6619 file(s) [attempted 6619/7869 = 84%, 893 KB/s]Downloaded: 6747 file(s) [attempted 6747/7869 = 85%, 4187 KB/s]Downloaded: 6870 file(s) [attempted 6870/7869 = 87%, 834 KB/s]Downloaded: 6994 file(s) [attempted 6994/7869 = 88%, 553 KB/s]Downloaded: 7107 file(s) [attempted 7107/7869 = 90%, 1535 KB/s]Downloaded: 7233 file(s) [attempted 7233/7869 = 91%, 133 KB/s]Downloaded: 7342 file(s) [attempted 7342/7869 = 93%, 742 KB/s]Downloaded: 7470 file(s) [attempted 7470/7869 = 94%, 314 KB/s]Downloaded: 7581 file(s) [attempted 7581/7869 = 96%, 294 KB/s]Downloaded: 7709 file(s) [attempted 7709/7869 = 97%, 1451 KB/s]Downloaded: 7823 file(s) [attempted 7823/7869 = 99%, 441 KB/s]Downloaded: 7869 file(s) [attempted 7869/7869 = 100%, 441 KB/s]
+Downloaded: 1 file(s) [attempted 1/7869 = 0%, 16 KB/s]Downloaded: 79 file(s) [attempted 79/7869 = 1%, 747 KB/s]Downloaded: 183 file(s) [attempted 183/7869 = 2%, 185 KB/s]Downloaded: 292 file(s) [attempted 292/7869 = 3%, 316 KB/s]Downloaded: 401 file(s) [attempted 401/7869 = 5%, 229 KB/s]Downloaded: 513 file(s) [attempted 513/7869 = 6%, 3084 KB/s]Downloaded: 629 file(s) [attempted 629/7869 = 7%, 354 KB/s]Downloaded: 752 file(s) [attempted 752/7869 = 9%, 951 KB/s]Downloaded: 869 file(s) [attempted 869/7869 = 11%, 1473 KB/s]Downloaded: 987 file(s) [attempted 987/7869 = 12%, 397 KB/s]Downloaded: 1103 file(s) [attempted 1103/7869 = 14%, 354 KB/s]Downloaded: 1217 file(s) [attempted 1217/7869 = 15%, 559 KB/s]Downloaded: 1331 file(s) [attempted 1331/7869 = 16%, 1103 KB/s]Downloaded: 1449 file(s) [attempted 1449/7869 = 18%, 1868 KB/s]Downloaded: 1566 file(s) [attempted 1566/7869 = 19%, 358 KB/s]Downloaded: 1688 file(s) [attempted 1688/7869 = 21%, 2567 KB/s]Downloaded: 1802 file(s) [attempted 1802/7869 = 22%, 2676 KB/s]Downloaded: 1913 file(s) [attempted 1913/7869 = 24%, 975 KB/s]Downloaded: 2032 file(s) [attempted 2032/7869 = 25%, 3686 KB/s]Downloaded: 2141 file(s) [attempted 2141/7869 = 27%, 96 KB/s]Downloaded: 2266 file(s) [attempted 2266/7869 = 28%, 484 KB/s]Downloaded: 2382 file(s) [attempted 2382/7869 = 30%, 795 KB/s]Downloaded: 2508 file(s) [attempted 2508/7869 = 31%, 235 KB/s]Downloaded: 2624 file(s) [attempted 2624/7869 = 33%, 182 KB/s]Downloaded: 2743 file(s) [attempted 2743/7869 = 34%, 716 KB/s]Downloaded: 2854 file(s) [attempted 2854/7869 = 36%, 1022 KB/s]Downloaded: 2972 file(s) [attempted 2972/7869 = 37%, 979 KB/s]Downloaded: 3091 file(s) [attempted 3091/7869 = 39%, 238 KB/s]Downloaded: 3214 file(s) [attempted 3214/7869 = 40%, 1045 KB/s]Downloaded: 3337 file(s) [attempted 3337/7869 = 42%, 371 KB/s]Downloaded: 3458 file(s) [attempted 3458/7869 = 43%, 2409 KB/s]Downloaded: 3576 file(s) [attempted 3576/7869 = 45%, 187 KB/s]Downloaded: 3699 file(s) [attempted 3699/7869 = 47%, 5284 KB/s]Downloaded: 3818 file(s) [attempted 3818/7869 = 48%, 702 KB/s]Downloaded: 3941 file(s) [attempted 3941/7869 = 50%, 513 KB/s]Downloaded: 4062 file(s) [attempted 4062/7869 = 51%, 2466 KB/s]Downloaded: 4187 file(s) [attempted 4187/7869 = 53%, 2486 KB/s]Downloaded: 4303 file(s) [attempted 4303/7869 = 54%, 873 KB/s]Downloaded: 4424 file(s) [attempted 4424/7869 = 56%, 784 KB/s]Downloaded: 4547 file(s) [attempted 4547/7869 = 57%, 492 KB/s]Downloaded: 4668 file(s) [attempted 4668/7869 = 59%, 179 KB/s]Downloaded: 4788 file(s) [attempted 4788/7869 = 60%, 3180 KB/s]Downloaded: 4912 file(s) [attempted 4912/7869 = 62%, 1465 KB/s]Downloaded: 5033 file(s) [attempted 5033/7869 = 63%, 2568 KB/s]Downloaded: 5161 file(s) [attempted 5161/7869 = 65%, 813 KB/s]Downloaded: 5277 file(s) [attempted 5277/7869 = 67%, 1703 KB/s]Downloaded: 5405 file(s) [attempted 5405/7869 = 68%, 2033 KB/s]Downloaded: 5521 file(s) [attempted 5521/7869 = 70%, 145 KB/s]Downloaded: 5647 file(s) [attempted 5647/7869 = 71%, 1170 KB/s]Downloaded: 5770 file(s) [attempted 5770/7869 = 73%, 580 KB/s]Downloaded: 5886 file(s) [attempted 5886/7869 = 74%, 1056 KB/s]Downloaded: 6007 file(s) [attempted 6007/7869 = 76%, 2397 KB/s]Downloaded: 6123 file(s) [attempted 6123/7869 = 77%, 527 KB/s]Downloaded: 6248 file(s) [attempted 6248/7869 = 79%, 2649 KB/s]Downloaded: 6371 file(s) [attempted 6371/7869 = 80%, 190 KB/s]Downloaded: 6497 file(s) [attempted 6497/7869 = 82%, 1121 KB/s]Downloaded: 6618 file(s) [attempted 6618/7869 = 84%, 1194 KB/s]Downloaded: 6738 file(s) [attempted 6738/7869 = 85%, 345 KB/s]Downloaded: 6862 file(s) [attempted 6862/7869 = 87%, 259 KB/s]Downloaded: 6987 file(s) [attempted 6987/7869 = 88%, 999 KB/s]Downloaded: 7108 file(s) [attempted 7108/7869 = 90%, 1572 KB/s]Downloaded: 7229 file(s) [attempted 7229/7869 = 91%, 469 KB/s]Downloaded: 7347 file(s) [attempted 7347/7869 = 93%, 4072 KB/s]Downloaded: 7473 file(s) [attempted 7473/7869 = 94%, 1329 KB/s]Downloaded: 7591 file(s) [attempted 7591/7869 = 96%, 1079 KB/s]Downloaded: 7717 file(s) [attempted 7717/7869 = 98%, 1605 KB/s]Downloaded: 7835 file(s) [attempted 7835/7869 = 99%, 1898 KB/s]Downloaded: 7869 file(s) [attempted 7869/7869 = 100%, 1898 KB/s]
 Decompressing 7869 file(s)
-Unpacked in 21287 ms
+Unpacked in 20656 ms
 Completed successfully!
 $ lake exe cache get
 Current branch: HEAD
 Using cache (Azure) from origin: leanprover-community/mathlib4
 No files to download
 Decompressing 7869 file(s)
-Unpacked in 21824 ms
+Unpacked in 21137 ms
 Completed successfully!
 $ lake build FormalConjectures.WrittenOnTheWallII.GraphConjecture146 FormalConjecturesForMathlib.WrittenOnTheWallII.GraphConjecture142Proof
-✔ [7884/7891] Built FormalConjecturesForMathlib.Algebra.GCDMonoid.Finset (1.8s)
-✔ [7885/7893] Built FormalConjecturesForMathlib.Algebra.Group.Action.Pointwise.Set.Basic (1.8s)
-✔ [7886/7893] Built FormalConjecturesForMathlib.Order.Filter.atTopBot.Finset (1.8s)
-✔ [7887/7893] Built FormalConjecturesForMathlib.Algebra.Group.Indicator (1.6s)
+✔ [7884/7891] Built FormalConjecturesForMathlib.Algebra.Group.Action.Pointwise.Set.Basic (1.6s)
+✔ [7885/7892] Built FormalConjecturesForMathlib.Order.Filter.atTopBot.Finset (1.8s)
+✔ [7886/7892] Built FormalConjecturesForMathlib.Algebra.GCDMonoid.Finset (1.8s)
+✔ [7887/7893] Built FormalConjecturesForMathlib.Algebra.Group.Indicator (1.7s)
 ✔ [7888/7894] Built FormalConjecturesForMathlib.Algebra.Polynomial.Basic (1.9s)
 ✔ [7889/7895] Built FormalConjecturesForMathlib.Algebra.Polynomial.Algebra (2.8s)
-✔ [7890/7896] Built FormalConjecturesForMathlib.Algebra.Polynomial.HasseDeriv (2.7s)
-✔ [7891/7897] Built FormalConjecturesForMathlib.Algebra.Powerfree (2.4s)
-✔ [7892/7898] Built FormalConjecturesForMathlib.Algebra.Order.Group.Pointwise.Interval (6.2s)
-✔ [7893/7899] Built FormalConjecturesForMathlib.Algebra.QuadraticAlgebra.Basic (4.5s)
-✔ [7894/7900] Built FormalConjecturesForMathlib.Algebra.QuadraticAlgebra.Instances (4.2s)
-✔ [7895/7901] Built FormalConjecturesForMathlib.AlgebraicGeometry.ProjectiveSpace (3.6s)
+✔ [7890/7896] Built FormalConjecturesForMathlib.Algebra.Polynomial.HasseDeriv (2.4s)
+✔ [7891/7897] Built FormalConjecturesForMathlib.Algebra.Powerfree (2.0s)
+✔ [7892/7898] Built FormalConjecturesForMathlib.Algebra.Order.Group.Pointwise.Interval (6.3s)
+✔ [7893/7899] Built FormalConjecturesForMathlib.Algebra.QuadraticAlgebra.Basic (4.3s)
+✔ [7894/7900] Built FormalConjecturesForMathlib.AlgebraicGeometry.ProjectiveSpace (3.8s)
+✔ [7895/7901] Built FormalConjecturesForMathlib.Algebra.QuadraticAlgebra.Instances (4.1s)
 ✔ [7896/7901] Built FormalConjecturesForMathlib.Algebra.Group.GrowthFunction (10s)
 ✔ [7897/7904] Built FormalConjecturesForMathlib.Analysis.Equidistribution.ModOne (2.3s)
-✔ [7898/7905] Built FormalConjecturesForMathlib.Analysis.Asymptotics.Basic (2.8s)
-✔ [7899/7906] Built FormalConjecturesForMathlib.AlgebraicGeometry.VectorBundle (3.5s)
-✔ [7900/7907] Built FormalConjecturesForMathlib.Topology.Algebra.InfiniteSum.Group (2.5s)
-✔ [7901/7907] Built FormalConjecturesForMathlib.Topology.Algebra.InfiniteSum.Order (2.6s)
-✔ [7902/7908] Built FormalConjecturesForMathlib.Analysis.Real.Cardinality (2.4s)
-✔ [7903/7908] Built FormalConjecturesForMathlib.Analysis.Fourier.SpectralSets (6.1s)
-✔ [7904/7911] Built FormalConjecturesForMathlib.Analysis.SpecialFunctions.NthRoot (3.7s)
-✔ [7905/7912] Built FormalConjecturesForMathlib.Analysis.SpecialFunctions.Log.Basic (4.9s)
-✔ [7906/7913] Built FormalConjecturesForMathlib.Analysis.HasGaps (4.7s)
+✔ [7898/7906] Built FormalConjecturesForMathlib.AlgebraicGeometry.VectorBundle (3.7s)
+✔ [7899/7906] Built FormalConjecturesForMathlib.Analysis.Asymptotics.Basic (2.7s)
+✔ [7900/7907] Built FormalConjecturesForMathlib.Topology.Algebra.InfiniteSum.Group (2.3s)
+✔ [7901/7908] Built FormalConjecturesForMathlib.Topology.Algebra.InfiniteSum.Order (2.4s)
+✔ [7902/7908] Built FormalConjecturesForMathlib.Analysis.Real.Cardinality (2.7s)
+✔ [7903/7908] Built FormalConjecturesForMathlib.Analysis.Fourier.SpectralSets (6.2s)
+✔ [7904/7911] Built FormalConjecturesForMathlib.Analysis.SpecialFunctions.NthRoot (3.9s)
+✔ [7905/7912] Built FormalConjecturesForMathlib.Analysis.SpecialFunctions.Log.Basic (4.6s)
+✔ [7906/7913] Built FormalConjecturesForMathlib.Analysis.HasGaps (4.9s)
 ✔ [7907/7914] Built FormalConjecturesForMathlib.Order.Filter.Cofinite (2.3s)
-✔ [7908/7914] Built FormalConjecturesForMathlib.Combinatorics.AP.Basic (4.2s)
-✔ [7909/7914] Built FormalConjecturesForMathlib.Combinatorics.Additive.Convolution (2.7s)
+✔ [7908/7914] Built FormalConjecturesForMathlib.Combinatorics.AP.Basic (4.3s)
+✔ [7909/7914] Built FormalConjecturesForMathlib.Combinatorics.Additive.Convolution (2.9s)
 ✔ [7910/7917] Built FormalConjecturesForMathlib.Combinatorics.Additive.DifferenceBasis (1.9s)
 ✔ [7911/7918] Built FormalConjecturesForMathlib.Combinatorics.Additive.RestrictedSumset (1.6s)
 ✔ [7912/7919] Built FormalConjecturesForMathlib.Combinatorics.SetFamily.VCDim (2.4s)
-✔ [7913/7920] Built FormalConjecturesForMathlib.Combinatorics.Additive.Coset (5.8s)
-✔ [7914/7920] Built FormalConjecturesForMathlib.Combinatorics.Hypergraph.ThreeUniform (2.5s)
-✔ [7915/7921] Built FormalConjecturesForMathlib.Combinatorics.Additive.Basis (8.3s)
-✔ [7916/7923] Built FormalConjecturesForMathlib.Combinatorics.LatinSquare (2.6s)
-✔ [7917/7924] Built FormalConjecturesForMathlib.Combinatorics.Ramsey (1.8s)
-✔ [7918/7925] Built FormalConjecturesForMathlib.Combinatorics.Additive.VCDim (6.6s)
-✔ [7919/7925] Built FormalConjecturesForMathlib.Combinatorics.SetFamily.Sunflower (1.9s)
-✔ [7920/7926] Built FormalConjecturesForMathlib.Combinatorics.SetTheory.PartitionRelation (1.9s)
-✔ [7921/7927] Built FormalConjecturesForMathlib.Combinatorics.SimpleGraph.Balanced (2.0s)
-✔ [7922/7929] Built FormalConjecturesForMathlib.Combinatorics.SimpleGraph.Circumference (1.9s)
-✔ [7923/7930] Built FormalConjecturesForMathlib.Combinatorics.Ramsey.Diagonal (2.7s)
-✔ [7924/7933] Built FormalConjecturesForMathlib.Combinatorics.SimpleGraph.CompleteGraphEdgeCount (1.0s)
-✔ [7925/7933] Built FormalConjecturesForMathlib.Combinatorics.SimpleGraph.CycleRank (1.0s)
+✔ [7913/7920] Built FormalConjecturesForMathlib.Combinatorics.Additive.Coset (6.2s)
+✔ [7914/7920] Built FormalConjecturesForMathlib.Combinatorics.Hypergraph.ThreeUniform (3.1s)
+✔ [7915/7921] Built FormalConjecturesForMathlib.Combinatorics.Additive.Basis (8.5s)
+✔ [7916/7923] Built FormalConjecturesForMathlib.Combinatorics.LatinSquare (2.3s)
+✔ [7917/7924] Built FormalConjecturesForMathlib.Combinatorics.Ramsey (1.9s)
+✔ [7918/7925] Built FormalConjecturesForMathlib.Combinatorics.Additive.VCDim (6.2s)
+✔ [7919/7925] Built FormalConjecturesForMathlib.Combinatorics.SetFamily.Sunflower (2.1s)
+✔ [7920/7926] Built FormalConjecturesForMathlib.Combinatorics.SetTheory.PartitionRelation (1.0s)
+✔ [7921/7927] Built FormalConjecturesForMathlib.Combinatorics.SimpleGraph.Balanced (1.9s)
+✔ [7922/7929] Built FormalConjecturesForMathlib.Combinatorics.SimpleGraph.Circumference (1.8s)
+✔ [7923/7930] Built FormalConjecturesForMathlib.Combinatorics.Ramsey.Diagonal (2.9s)
+✔ [7924/7933] Built FormalConjecturesForMathlib.Combinatorics.SimpleGraph.CompleteGraphEdgeCount (1.9s)
+✔ [7925/7933] Built FormalConjecturesForMathlib.Combinatorics.SimpleGraph.CycleRank (1.8s)
 ✔ [7926/7934] Built FormalConjecturesForMathlib.Combinatorics.SimpleGraph.Clique (2.8s)
 ✔ [7927/7934] Built FormalConjecturesForMathlib.Combinatorics.SimpleGraph.DiamExtra (1.8s)
 ✔ [7928/7934] Built FormalConjecturesForMathlib.Combinatorics.SimpleGraph.Residue (2.3s)
-✔ [7929/7937] Built FormalConjecturesForMathlib.Combinatorics.Basic (17s)
+✔ [7929/7937] Built FormalConjecturesForMathlib.Combinatorics.Basic (16s)
 ✔ [7930/7937] Built FormalConjecturesForMathlib.Combinatorics.SimpleGraph.VertexDistance (4.2s)
-✔ [7931/7939] Built FormalConjecturesForMathlib.Combinatorics.SimpleGraph.FractionalAlpha (2.1s)
-✔ [7932/7940] Built FormalConjecturesForMathlib.Analysis.Matrix.Spectrum (3.1s)
-✔ [7933/7942] Built FormalConjecturesForMathlib.Combinatorics.SimpleGraph.SzegedIndex (2.9s)
-✔ [7934/7942] Built FormalConjecturesForMathlib.Combinatorics.SimpleGraph.WienerIndex (3.3s)
-✔ [7935/7942] Built FormalConjecturesForMathlib.Combinatorics.SimpleGraph.Degrees (2.3s)
-✔ [7936/7943] Built FormalConjecturesForMathlib.Combinatorics.SimpleGraph.Coloring (8.2s)
-✔ [7937/7944] Built FormalConjecturesForMathlib.Combinatorics.SimpleGraph.Cvetkovic (2.5s)
-✔ [7938/7944] Built FormalConjecturesForMathlib.Combinatorics.SimpleGraph.LovaszTheta (2.7s)
-✔ [7939/7945] Built FormalConjecturesForMathlib.Combinatorics.SimpleGraph.Independence (2.1s)
-✔ [7940/7946] Built FormalConjecturesForMathlib.Combinatorics.SimpleGraph.Temperature (1.7s)
+✔ [7931/7937] Built FormalConjecturesForMathlib.Combinatorics.SimpleGraph.FractionalAlpha (2.1s)
+✔ [7932/7940] Built FormalConjecturesForMathlib.Analysis.Matrix.Spectrum (3.6s)
+✔ [7933/7940] Built FormalConjecturesForMathlib.Combinatorics.SimpleGraph.WienerIndex (3.2s)
+✔ [7934/7941] Built FormalConjecturesForMathlib.Combinatorics.SimpleGraph.SzegedIndex (3.2s)
+✔ [7935/7942] Built FormalConjecturesForMathlib.Combinatorics.SimpleGraph.Coloring (7.7s)
+✔ [7936/7944] Built FormalConjecturesForMathlib.Combinatorics.SimpleGraph.LovaszTheta (2.8s)
+✔ [7937/7944] Built FormalConjecturesForMathlib.Combinatorics.SimpleGraph.Degrees (2.4s)
+✔ [7938/7945] Built FormalConjecturesForMathlib.Combinatorics.SimpleGraph.Cvetkovic (2.4s)
+✔ [7939/7945] Built FormalConjecturesForMathlib.Combinatorics.SimpleGraph.Temperature (1.8s)
+✔ [7940/7946] Built FormalConjecturesForMathlib.Combinatorics.SimpleGraph.Independence (2.2s)
 ✔ [7941/7947] Built FormalConjecturesForMathlib.Combinatorics.SimpleGraph.AnnihilationNumber (2.3s)
 ✔ [7942/7948] Built FormalConjecturesForMathlib.Combinatorics.SimpleGraph.Eccentricity (2.9s)
-✔ [7943/7949] Built FormalConjecturesForMathlib.Combinatorics.SimpleGraph.PathCover (1.8s)
-✔ [7944/7950] Built FormalConjecturesForMathlib.Combinatorics.SimpleGraph.Induced (2.1s)
+✔ [7943/7950] Built FormalConjecturesForMathlib.Combinatorics.SimpleGraph.Induced (2.0s)
+✔ [7944/7950] Built FormalConjecturesForMathlib.Combinatorics.SimpleGraph.PathCover (1.8s)
 ✔ [7945/7950] Built FormalConjecturesForMathlib.Combinatorics.SimpleGraph.EdgeColouring (1.7s)
-✔ [7946/7953] Built FormalConjecturesForMathlib.Combinatorics.SimpleGraph.WellTotallyDominated (1.7s)
-✔ [7947/7954] Built FormalConjecturesForMathlib.Combinatorics.SimpleGraph.Domination (2.3s)
-✔ [7948/7955] Built FormalConjecturesForMathlib.Combinatorics.SimpleGraph.LargestInducedTree (1.9s)
-✔ [7949/7956] Built FormalConjecturesForMathlib.Combinatorics.SimpleGraph.HomDensity (2.5s)
-✔ [7950/7957] Built FormalConjecturesForMathlib.Data.Finset.Card (1.5s)
+✔ [7946/7953] Built FormalConjecturesForMathlib.Combinatorics.SimpleGraph.Domination (2.2s)
+✔ [7947/7954] Built FormalConjecturesForMathlib.Combinatorics.SimpleGraph.WellTotallyDominated (1.7s)
+✔ [7948/7955] Built FormalConjecturesForMathlib.Combinatorics.SimpleGraph.LargestInducedTree (2.1s)
+✔ [7949/7956] Built FormalConjecturesForMathlib.Data.Finset.Card (1.6s)
+✔ [7950/7957] Built FormalConjecturesForMathlib.Combinatorics.SimpleGraph.HomDensity (2.5s)
 ✔ [7951/7957] Built FormalConjecturesForMathlib.Combinatorics.SimpleGraph.Ramsey (1.8s)
-✔ [7952/7958] Built FormalConjecturesForMathlib.Combinatorics.SimpleGraph.SizeRamsey (2.0s)
-✔ [7953/7959] Built FormalConjecturesForMathlib.Combinatorics.SimpleGraph.Connectivity (1.7s)
-✔ [7954/7960] Built FormalConjecturesForMathlib.Combinatorics.SimpleGraph.Matching (2.2s)
-✔ [7955/7961] Built FormalConjecturesForMathlib.Combinatorics.SimpleGraph.Johnson (2.2s)
-✔ [7956/7961] Built FormalConjecturesForMathlib.Combinatorics.SimpleGraph.SpanningTree (1.0s)
+✔ [7952/7958] Built FormalConjecturesForMathlib.Combinatorics.SimpleGraph.SizeRamsey (1.9s)
+✔ [7953/7959] Built FormalConjecturesForMathlib.Combinatorics.SimpleGraph.Connectivity (1.8s)
+✔ [7954/7960] Built FormalConjecturesForMathlib.Combinatorics.SimpleGraph.Johnson (2.1s)
+✔ [7955/7961] Built FormalConjecturesForMathlib.Combinatorics.SimpleGraph.Matching (2.3s)
+✔ [7956/7961] Built FormalConjecturesForMathlib.Combinatorics.SimpleGraph.SpanningTree (2.1s)
 ✔ [7957/7964] Built FormalConjecturesForMathlib.Combinatorics.YoungDiagram (1.7s)
-✔ [7958/7966] Built FormalConjecturesForMathlib.Combinatorics.SimpleGraph.UnitDistancePlaneGraph (2.7s)
-✔ [7959/7967] Built FormalConjecturesForMathlib.Computability.DFA (1.9s)
+✔ [7958/7967] Built FormalConjecturesForMathlib.Combinatorics.SimpleGraph.UnitDistancePlaneGraph (2.8s)
+✔ [7959/7967] Built FormalConjecturesForMathlib.Computability.DFA (1.8s)
 ✔ [7960/7968] Built FormalConjecturesForMathlib.Computability.Encoding (1.9s)
 ✔ [7961/7969] Built FormalConjecturesForMathlib.Computability.TuringMachine.PostTuringMachine (1.9s)
 ✔ [7962/7970] Built FormalConjecturesForMathlib.Data.Finset.Powerset (1.7s)
-✔ [7963/7970] Built FormalConjecturesForMathlib.Data.Int.IntermediateValue (1.4s)
-✔ [7964/7971] Built FormalConjecturesForMathlib.Data.Finset.ReciprocalSum (1.8s)
+✔ [7963/7970] Built FormalConjecturesForMathlib.Data.Finset.ReciprocalSum (1.8s)
+✔ [7964/7971] Built FormalConjecturesForMathlib.Data.Int.IntermediateValue (1.6s)
 ✔ [7965/7972] Built FormalConjecturesForMathlib.Data.Nat.Init (1.3s)
-✔ [7966/7973] Built FormalConjecturesForMathlib.Data.Nat.Factorization.Basic (2.2s)
-✔ [7967/7974] Built FormalConjecturesForMathlib.Data.Nat.Full (2.3s)
-✔ [7968/7975] Built FormalConjecturesForMathlib.Computability.TuringMachine.BusyBeavers (3.3s)
+✔ [7966/7973] Built FormalConjecturesForMathlib.Data.Nat.Factorization.Basic (2.3s)
+✔ [7967/7974] Built FormalConjecturesForMathlib.Data.Nat.Full (2.4s)
+✔ [7968/7975] Built FormalConjecturesForMathlib.Computability.TuringMachine.BusyBeavers (3.1s)
 ✔ [7969/7976] Built FormalConjecturesForMathlib.Data.Nat.MaxPrimeFac (2.3s)
-✔ [7970/7976] Built FormalConjecturesForMathlib.Data.Nat.Prime.Composite (1.6s)
-✔ [7971/7977] Built FormalConjecturesForMathlib.Data.Nat.Prime.Finset (1.7s)
-✔ [7972/7978] Built FormalConjecturesForMathlib.Data.Nat.Prime.Defs (2.6s)
-✔ [7973/7978] Built FormalConjecturesForMathlib.Data.Nat.PerfectPower (4.1s)
-✔ [7974/7980] Built FormalConjecturesForMathlib.Computability.TuringMachine.Notation (3.8s)
+✔ [7970/7976] Built FormalConjecturesForMathlib.Data.Nat.Prime.Composite (1.5s)
+✔ [7971/7977] Built FormalConjecturesForMathlib.Data.Nat.Prime.Defs (2.6s)
+✔ [7972/7978] Built FormalConjecturesForMathlib.Data.Nat.Prime.Finset (1.7s)
+✔ [7973/7978] Built FormalConjecturesForMathlib.Data.Nat.PerfectPower (4.4s)
+✔ [7974/7980] Built FormalConjecturesForMathlib.Computability.TuringMachine.Notation (3.7s)
 ✔ [7975/7982] Built FormalConjecturesForMathlib.Data.Real.NearestInt (1.7s)
-✔ [7976/7983] Built FormalConjecturesForMathlib.Data.Real.Constants (2.0s)
-✔ [7977/7984] Built FormalConjecturesForMathlib.Data.Nat.Squarefree (3.7s)
+✔ [7976/7983] Built FormalConjecturesForMathlib.Data.Real.Constants (2.9s)
+✔ [7977/7985] Built FormalConjecturesForMathlib.Data.Nat.Squarefree (3.7s)
 ✔ [7978/7985] Built FormalConjecturesForMathlib.Data.Set.Interval (1.9s)
-✔ [7979/7986] Built FormalConjecturesForMathlib.Order.Interval.Finset.Basic (1.0s)
+✔ [7979/7986] Built FormalConjecturesForMathlib.Order.Interval.Finset.Basic (1.9s)
 ✔ [7980/7987] Built FormalConjecturesForMathlib.Order.Interval.Finset.Nat (1.8s)
-✔ [7981/7987] Built FormalConjecturesForMathlib.Data.ZMod.Fp (1.9s)
-✔ [7982/7988] Built FormalConjecturesForMathlib.Data.ZMod.PerfectDifferenceSet (1.0s)
-✔ [7983/7988] Built FormalConjecturesForMathlib.Data.Set.Triplewise (2.5s)
-✔ [7984/7991] Built FormalConjecturesForMathlib.FieldTheory.MvRatFunc.Defs (2.2s)
+✔ [7981/7988] Built FormalConjecturesForMathlib.Data.ZMod.Fp (2.1s)
+✔ [7982/7988] Built FormalConjecturesForMathlib.Data.ZMod.PerfectDifferenceSet (1.7s)
+✔ [7983/7988] Built FormalConjecturesForMathlib.Data.Set.Triplewise (2.6s)
+✔ [7984/7991] Built FormalConjecturesForMathlib.FieldTheory.MvRatFunc.Defs (2.3s)
 ✔ [7985/7992] Built FormalConjecturesForMathlib.Geometry.Metric (1.9s)
-✔ [7986/7993] Built FormalConjecturesForMathlib.Logic.Equiv.Fin.Rotate (1.5s)
+✔ [7986/7993] Built FormalConjecturesForMathlib.Logic.Equiv.Fin.Rotate (1.6s)
 ✔ [7987/7994] Built FormalConjecturesForMathlib.Geometry.Euclidean (2.8s)
-✔ [7988/7994] Built FormalConjecturesForMathlib.LinearAlgebra.AffineSpace.Simplex.Basic (2.4s)
-✔ [7989/7996] Built FormalConjecturesForMathlib.Data.Set.Density (5.7s)
-✔ [7990/7997] Built FormalConjecturesForMathlib.Geometry.«3d» (3.5s)
-✔ [7991/7998] Built FormalConjecturesForMathlib.NumberTheory.Amicable (1.9s)
-✔ [7992/7999] Built FormalConjecturesForMathlib.LinearAlgebra.GeneralLinearGroup (2.9s)
-✔ [7993/8000] Built FormalConjecturesForMathlib.NumberTheory.AdditivelyComplete (2.6s)
-✔ [7994/8000] Built FormalConjecturesForMathlib.NumberTheory.BeurlingPrimes (3.3s)
-✔ [7995/8001] Built FormalConjecturesForMathlib.LinearAlgebra.SpecialLinearGroup (3.5s)
+✔ [7988/7994] Built FormalConjecturesForMathlib.LinearAlgebra.AffineSpace.Simplex.Basic (2.7s)
+✔ [7989/7997] Built FormalConjecturesForMathlib.Data.Set.Density (5.8s)
+✔ [7990/7997] Built FormalConjecturesForMathlib.Geometry.«3d» (3.4s)
+✔ [7991/7998] Built FormalConjecturesForMathlib.NumberTheory.AdditivelyComplete (2.3s)
+✔ [7992/7999] Built FormalConjecturesForMathlib.NumberTheory.Amicable (2.7s)
+✔ [7993/8000] Built FormalConjecturesForMathlib.LinearAlgebra.GeneralLinearGroup (2.0s)
+✔ [7994/8000] Built FormalConjecturesForMathlib.NumberTheory.BeurlingPrimes (2.7s)
+✔ [7995/8001] Built FormalConjecturesForMathlib.NumberTheory.CoveringSystem (2.7s)
 ✔ [7996/8002] Built FormalConjecturesForMathlib.Geometry.«2d» (9.1s)
-✔ [7997/8003] Built FormalConjecturesForMathlib.NumberTheory.CoveringSystem (2.0s)
+✔ [7997/8003] Built FormalConjecturesForMathlib.LinearAlgebra.SpecialLinearGroup (2.3s)
 ✔ [7998/8004] Built FormalConjecturesForMathlib.NumberTheory.DirichletCharacter.Basic (2.1s)
-✔ [7999/8005] Built FormalConjecturesForMathlib.NumberTheory.Divisors (1.9s)
-✔ [8000/8006] Built FormalConjecturesForMathlib.NumberTheory.Carmichael (6.2s)
-✔ [8001/8007] Built FormalConjecturesForMathlib.NumberTheory.Lacunary (2.6s)
-✔ [8002/8008] Built FormalConjecturesForMathlib.NumberTheory.NormalNumber (1.9s)
-✔ [8003/8009] Built FormalConjecturesForMathlib.NumberTheory.LegendreSymbol.Basic (2.3s)
-✔ [8004/8010] Built FormalConjecturesForMathlib.NumberTheory.NumberField.Quadratic (2.7s)
-✔ [8005/8012] Built FormalConjecturesForMathlib.NumberTheory.PracticalNumbers (1.8s)
-✔ [8006/8012] Built FormalConjecturesForMathlib.NumberTheory.PrimeGap (1.7s)
-✔ [8007/8013] Built FormalConjecturesForMathlib.NumberTheory.Primitive (2.1s)
+✔ [7999/8005] Built FormalConjecturesForMathlib.NumberTheory.Divisors (1.0s)
+✔ [8000/8006] Built FormalConjecturesForMathlib.NumberTheory.Carmichael (6.4s)
+✔ [8001/8007] Built FormalConjecturesForMathlib.NumberTheory.Lacunary (2.5s)
+✔ [8002/8008] Built FormalConjecturesForMathlib.NumberTheory.LegendreSymbol.Basic (2.6s)
+✔ [8003/8009] Built FormalConjecturesForMathlib.NumberTheory.NormalNumber (2.0s)
+✔ [8004/8010] Built FormalConjecturesForMathlib.NumberTheory.NumberField.Quadratic (2.6s)
+✔ [8005/8011] Built FormalConjecturesForMathlib.NumberTheory.PracticalNumbers (1.8s)
+✔ [8006/8012] Built FormalConjecturesForMathlib.NumberTheory.PrimeGap (1.6s)
+✔ [8007/8013] Built FormalConjecturesForMathlib.NumberTheory.SierpinskiNumber (1.5s)
 ✔ [8008/8014] Built FormalConjecturesForMathlib.NumberTheory.PisotNumber (3.7s)
-✔ [8009/8015] Built FormalConjecturesForMathlib.NumberTheory.SierpinskiNumber (1.6s)
-✔ [8010/8016] Built FormalConjecturesForMathlib.Probability.FiniteMethod (1.9s)
-✔ [8011/8017] Built FormalConjecturesForMathlib.NumberTheory.WallSunSunPrimes (3.3s)
-✔ [8012/8019] Built FormalConjecturesForMathlib.SetTheory.Cardinal.Arithmetic (2.1s)
-✔ [8013/8019] Built FormalConjecturesForMathlib.SetTheory.Cardinal.Continuum (1.9s)
-✔ [8014/8022] Built FormalConjecturesForMathlib.SetTheory.Cardinal.SimpleGraph (1.9s)
+✔ [8009/8015] Built FormalConjecturesForMathlib.NumberTheory.Primitive (2.2s)
+✔ [8010/8016] Built FormalConjecturesForMathlib.NumberTheory.WallSunSunPrimes (3.2s)
+✔ [8011/8017] Built FormalConjecturesForMathlib.Probability.FiniteMethod (2.0s)
+✔ [8012/8019] Built FormalConjecturesForMathlib.SetTheory.Cardinal.Arithmetic (2.2s)
+✔ [8013/8019] Built FormalConjecturesForMathlib.SetTheory.Cardinal.Continuum (1.8s)
+✔ [8014/8020] Built FormalConjecturesForMathlib.SetTheory.Cardinal.SimpleGraph (1.9s)
 ✔ [8015/8022] Built FormalConjecturesForMathlib.Topology.AbsoluteNeighborhoodRetract (1.8s)
-✔ [8016/8024] Built FormalConjecturesForMathlib.Topology.Discrete (1.8s)
+✔ [8016/8022] Built FormalConjecturesForMathlib.Topology.Discrete (1.8s)
 ✔ [8017/8024] Built FormalConjecturesForMathlib.Topology.GDelta (1.8s)
-✔ [8018/8027] Built FormalConjecturesUtil.Answer.Syntax (395ms)
-✔ [8019/8028] Built FormalConjecturesForMathlib.Topology.LebesgueCoveringDimension (1.8s)
-✔ [8020/8035] Built FormalConjecturesForMathlib.Topology.MetricSpace.MetricSeparated (1.0s)
-✔ [8021/8035] Built FormalConjecturesUtil.Answer (1.3s)
-✔ [8022/8038] Built FormalConjecturesForMathlib.Topology.Homogeneous (1.9s)
-✔ [8024/8039] Built FormalConjecturesForMathlib.Lean.Elab.InfoTree.Util (603ms)
-✔ [8025/8039] Built FormalConjecturesUtil.Linters.CopyrightLinter (815ms)
-✔ [8026/8039] Built FormalConjecturesUtil.Linters.ModuleDocstringLinter (1.4s)
-✔ [8027/8039] Built FormalConjecturesUtil.Linters.NamespaceLinter (929ms)
+✔ [8018/8027] Built FormalConjecturesUtil.Answer.Syntax (343ms)
+✔ [8019/8028] Built FormalConjecturesForMathlib.Topology.LebesgueCoveringDimension (1.9s)
+✔ [8020/8035] Built FormalConjecturesForMathlib.Topology.Homogeneous (1.7s)
+✔ [8021/8035] Built FormalConjecturesUtil.Answer (1.2s)
+✔ [8022/8038] Built FormalConjecturesForMathlib.Topology.MetricSpace.MetricSeparated (2.1s)
+✔ [8024/8039] Built FormalConjecturesForMathlib.Lean.Elab.InfoTree.Util (570ms)
+✔ [8025/8039] Built FormalConjecturesUtil.Linters.CopyrightLinter (839ms)
+✔ [8026/8039] Built FormalConjecturesUtil.Linters.ModuleDocstringLinter (1.2s)
+✔ [8027/8039] Built FormalConjecturesUtil.Linters.NamespaceLinter (943ms)
 ✔ [8028/8039] Built FormalConjecturesUtil.Attributes.AMS (2.2s)
-✔ [8029/8039] Built FormalConjecturesForMathlib.Tactic.Linter.Term (989ms)
-✔ [8030/8039] Built FormalConjecturesUtil.Linters.ExistsImplicationLinter (802ms)
-✔ [8031/8039] Built FormalConjecturesUtil.Attributes.Basic (3.2s)
-✔ [8032/8039] Built FormalConjecturesForMathlib (6.7s)
-✔ [8033/8039] Built FormalConjecturesUtil.Linters.CategoryLinter (2.8s)
-✔ [8034/8039] Built FormalConjecturesUtil.Linters.CategoryDocstringLinter (2.9s)
-✔ [8035/8039] Built FormalConjecturesUtil.Linters.AnswerLinter (2.7s)
-✔ [8036/8039] Built FormalConjecturesUtil.Linters.AMSLinter (3.8s)
-✔ [8037/8039] Built FormalConjecturesUtil (4.5s)
-✔ [8038/8039] Built FormalConjectures.WrittenOnTheWallII.GraphConjecture146 (4.9s)
-✔ [8039/8039] Built FormalConjecturesForMathlib.WrittenOnTheWallII.GraphConjecture142Proof (21s)
+✔ [8029/8039] Built FormalConjecturesForMathlib.Tactic.Linter.Term (926ms)
+✔ [8030/8039] Built FormalConjecturesUtil.Linters.ExistsImplicationLinter (792ms)
+✔ [8031/8039] Built FormalConjecturesUtil.Attributes.Basic (3.0s)
+✔ [8032/8039] Built FormalConjecturesForMathlib (5.9s)
+✔ [8033/8039] Built FormalConjecturesUtil.Linters.CategoryDocstringLinter (2.7s)
+✔ [8034/8039] Built FormalConjecturesUtil.Linters.CategoryLinter (3.1s)
+✔ [8035/8039] Built FormalConjecturesUtil.Linters.AnswerLinter (2.8s)
+✔ [8036/8039] Built FormalConjecturesUtil.Linters.AMSLinter (3.2s)
+✔ [8037/8039] Built FormalConjecturesUtil (4.4s)
+✔ [8038/8039] Built FormalConjectures.WrittenOnTheWallII.GraphConjecture146 (5.0s)
+✔ [8039/8039] Built FormalConjecturesForMathlib.WrittenOnTheWallII.GraphConjecture142Proof (20s)
 Build completed successfully (8039 jobs).
 $ lake env lean -DwarningAsError=true WOWII146.lean
 WrittenOnTheWallII.GraphConjecture146.conjecture146.{u_1} {α : Type u_1} [Fintype α] [DecidableEq α] [Nontrivial α]
